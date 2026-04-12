@@ -1,0 +1,260 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============ USERS & AUTH ============
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("admin") // admin, social_team, dev_team
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ CLIENTS ============
+model Client {
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  phone         String?
+  contactPerson String?
+  timezone      String?
+  status        String   @default("active") // active, paused, archived
+  services      Json     @default("[]")
+
+  calendars     Calendar[]
+  shoots        Shoot[]
+  videos        Video[]
+  projects      Project[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ SOCIAL MEDIA ============
+model Calendar {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  month String
+  year  Int
+
+  totalReels     Int @default(0)
+  totalPosts     Int @default(0)
+  totalCarousels Int @default(0)
+
+  status          String    @default("draft")
+  sentToClientAt  DateTime?
+  fullyApprovedAt DateTime?
+  completedAt     DateTime?
+  notes           String?
+
+  briefs ContentBrief[]
+  shoots Shoot[]
+  videos Video[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+model ContentBrief {
+  id         String   @id @default(cuid())
+  calendarId String
+  calendar   Calendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  briefNumber String
+  contentType String // Reel, Post, Carousel, Story
+
+  ideaTitle           String
+  ideaDescription     String
+  visualDescription   String
+  script              String
+  music               String?
+  hashtags            String?
+  cta                 String?
+  moodBoardLinks      String?
+  specialRequirements String?
+
+  status           String    @default("draft")
+  approvalDeadline DateTime?
+  clientFeedback   String?
+  revisionNotes    String?
+  currentVersion   Int       @default(1)
+  versions         Json      @default("[]")
+
+  sentToClientAt DateTime?
+  approvedAt     DateTime?
+  lastRevisedAt  DateTime?
+
+  shoots Shoot[]
+  videos Video[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([calendarId])
+}
+
+model Shoot {
+  id         String    @id @default(cuid())
+  calendarId String?
+  calendar   Calendar? @relation(fields: [calendarId], references: [id], onDelete: SetNull)
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  shootDate           DateTime
+  duration            Int?
+  location            String?
+  shootName           String?
+
+  briefIds            Json    @default("[]")
+  assignedMembers     Json    @default("[]")
+  equipmentNeeded     String?
+  specialInstructions String?
+  rawFootageLocation  String?
+
+  status          String   @default("scheduled")
+  reminderSent24h Boolean  @default(false)
+  reminderSent1h  Boolean  @default(false)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  notesPostShoot  String?
+
+  briefs ContentBrief[]
+  videos Video[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+model Video {
+  id         String        @id @default(cuid())
+  briefId    String?
+  brief      ContentBrief? @relation(fields: [briefId], references: [id], onDelete: SetNull)
+  shootId    String?
+  shoot      Shoot?        @relation(fields: [shootId], references: [id], onDelete: SetNull)
+  calendarId String
+  calendar   Calendar      @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  rawFootageLink       String?
+  rawFootageUploadedAt DateTime?
+  editorId             String?
+  editingStatus        String  @default("not_started")
+
+  finalVideoLink    String?
+  finalVideoVersion Int     @default(1)
+
+  clientApprovalStatus String    @default("pending")
+  clientFeedback       String?
+  sentToClientAt       DateTime?
+  clientApprovedAt     DateTime?
+  versions             Json      @default("[]")
+
+  status                String    @default("in_editing")
+  scheduledPostDate     DateTime?
+  scheduledPostPlatform String?
+  scheduledPostCaption  String?
+  postedAt              DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([briefId])
+  @@index([calendarId])
+  @@index([clientId])
+}
+
+// ============ APP/WEB DEVELOPMENT ============
+model Project {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  type        String // app, web
+  subType     String?
+
+  features Json @default("[]")
+
+  discoveryDeadline  DateTime?
+  designDeadline     DateTime?
+  devDeadline        DateTime?
+  testingDeadline    DateTime?
+  deploymentDeadline DateTime?
+
+  status             String @default("discovery")
+  progressPercentage Int    @default(0)
+
+  projectManagerId String?
+  designerId       String?
+  devTeamIds       Json   @default("[]")
+
+  deliverables Json @default("[]")
+  credentials  Json @default("[]")
+  integrations Json @default("[]")
+
+  deploymentLink String?
+  deploymentDate DateTime?
+
+  maintenanceStatus  String?
+  maintenanceEndDate DateTime?
+
+  clientFeedback Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+// ============ TEAM ============
+model TeamMember {
+  id         String @id @default(cuid())
+  name       String
+  email      String @unique
+  phone      String?
+  role       String
+  department String // social_media, app_web
+  skills     Json   @default("[]")
+  status     String @default("active")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ NOTIFICATIONS ============
+model Notification {
+  id           String  @id @default(cuid())
+  clientId     String?
+  client       Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  teamMemberId String?
+
+  type       String
+  message    String
+  actionLink String?
+
+  status String    @default("unread")
+  sentAt DateTime?
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}

@@ -2,21 +2,35 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import {
+  LayoutDashboard,
+  Users,
+  CalendarDays,
+  Camera,
+  Video,
+  FolderKanban,
+  Handshake,
+  Calendar,
+  Bell,
+  Settings,
+  LogOut,
+  type LucideIcon,
+} from "lucide-react";
 
-const mainNav = [
-  { href: "/dashboard",         label: "Dashboard",        icon: "⊞", section: null },
-  { href: "/clients",           label: "Clients",          icon: "👥", section: "clients" },
-  { href: "/calendars",         label: "Calendars",        icon: "📅", section: "calendars" },
-  { href: "/shoots",            label: "Shoots",           icon: "🎬", section: "shoots" },
-  { href: "/videos",            label: "Videos",           icon: "🎥", section: "videos" },
-  { href: "/projects",          label: "Projects",         icon: "💻", section: "projects" },
-  { href: "/teams",             label: "Team",             icon: "🤝", section: "teams" },
+const mainNav: { href: string; label: string; Icon: LucideIcon; section: string | null }[] = [
+  { href: "/dashboard",  label: "Dashboard",  Icon: LayoutDashboard, section: null },
+  { href: "/clients",    label: "Clients",    Icon: Users,            section: "clients" },
+  { href: "/calendars",  label: "Calendars",  Icon: CalendarDays,     section: "calendars" },
+  { href: "/shoots",     label: "Shoots",     Icon: Camera,           section: "shoots" },
+  { href: "/videos",     label: "Videos",     Icon: Video,            section: "videos" },
+  { href: "/projects",   label: "Projects",   Icon: FolderKanban,     section: "projects" },
+  { href: "/teams",      label: "Team",       Icon: Handshake,        section: "teams" },
 ];
 
-const bottomNav = [
-  { href: "/posting-calendar",  label: "Posting Calendar", icon: "🗓️", section: "posting_calendar" },
-  { href: "/notifications",     label: "Notifications",    icon: "🔔", section: "notifications" },
-  { href: "/settings",          label: "Settings",         icon: "⚙️", section: "settings" },
+const bottomNav: { href: string; label: string; Icon: LucideIcon; section: string | null }[] = [
+  { href: "/posting-calendar", label: "Posting Calendar", Icon: Calendar, section: "posting_calendar" },
+  { href: "/notifications",    label: "Notifications",    Icon: Bell,     section: "notifications" },
+  { href: "/settings",         label: "Settings",         Icon: Settings, section: "settings" },
 ];
 
 export default function Sidebar() {
@@ -24,57 +38,117 @@ export default function Sidebar() {
   const { user, can, logout } = useAuth();
 
   const isVisible = (section: string | null) => {
-    if (!section) return true; // dashboard always visible
+    if (!section) return true;
     return can(section, "view");
   };
 
-  const NavLink = ({ href, icon, label }: { href: string; icon: string; label: string }) => {
-    const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+  const NavLink = ({
+    href,
+    Icon,
+    label,
+  }: {
+    href: string;
+    Icon: LucideIcon;
+    label: string;
+  }) => {
+    const active =
+      pathname === href ||
+      (href !== "/dashboard" && pathname.startsWith(href));
     return (
-      <Link href={href}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-          active ? "bg-[#6B5B95]/10 text-[#6B5B95]" : "text-[#6B7280] hover:bg-gray-50 hover:text-[#2D3142]"
-        }`}>
-        <span className="text-base">{icon}</span>
+      <Link
+        href={href}
+        className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+          active
+            ? "bg-[--brand-primary-light] text-[--brand-primary]"
+            : "text-[--text-secondary] hover:bg-white hover:text-[--text-primary]"
+        }`}
+      >
+        {active && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-[--brand-primary]" />
+        )}
+        <Icon
+          size={16}
+          strokeWidth={active ? 2.25 : 1.75}
+          className="shrink-0"
+        />
         {label}
       </Link>
     );
   };
 
   return (
-    <aside className="w-60 min-h-screen bg-white border-r border-[#E5E7EB] flex flex-col fixed left-0 top-0 z-40 hidden md:flex">
+    <aside className="w-60 min-h-screen bg-white border-r border-[--border] flex flex-col fixed left-0 top-0 z-40 hidden md:flex">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-[#E5E7EB]">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#6B5B95] flex items-center justify-center text-white font-bold text-sm">B</div>
-          <span className="font-bold text-[#2D3142] text-base">Brndmonk CRM</span>
+      <div className="px-5 py-5 border-b border-[--border]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[--brand-primary] flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            B
+          </div>
+          <div>
+            <span className="font-bold text-[--text-primary] text-sm leading-tight block">
+              Brndmonk
+            </span>
+            <span className="text-[10px] text-[--text-tertiary] font-medium tracking-wide uppercase">
+              CRM
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Main nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {mainNav.filter(item => isVisible(item.section)).map(item => (
-          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
-        ))}
-
-        <div className="pt-2 mt-2 border-t border-[#F3F4F6] space-y-0.5">
-          {bottomNav.filter(item => isVisible(item.section)).map(item => (
-            <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
+        <p className="text-[10px] font-semibold text-[--text-tertiary] uppercase tracking-widest px-3 mb-2">
+          Menu
+        </p>
+        {mainNav
+          .filter((item) => isVisible(item.section))
+          .map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              Icon={item.Icon}
+              label={item.label}
+            />
           ))}
+
+        <div className="pt-3 mt-3 border-t border-[--border] space-y-0.5">
+          <p className="text-[10px] font-semibold text-[--text-tertiary] uppercase tracking-widest px-3 mb-2">
+            Tools
+          </p>
+          {bottomNav
+            .filter((item) => isVisible(item.section))
+            .map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                Icon={item.Icon}
+                label={item.label}
+              />
+            ))}
         </div>
       </nav>
 
       {/* User */}
-      <div className="border-t border-[#E5E7EB] px-4 py-4">
+      <div className="border-t border-[--border] px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#6B5B95]/20 flex items-center justify-center text-[#6B5B95] font-semibold text-sm">
+          <div className="w-8 h-8 rounded-full bg-[--brand-primary-light] flex items-center justify-center text-[--brand-primary] font-bold text-sm">
             {user?.name?.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-[#2D3142] truncate">{user?.name}</p>
-            <p className="text-xs text-[#9CA3AF] truncate capitalize">{user?.role?.replace(/_/g, " ")}</p>
+            <p className="text-sm font-semibold text-[--text-primary] truncate">
+              {user?.name}
+            </p>
+            <p className="text-xs text-[--text-tertiary] truncate capitalize">
+              {user?.role?.replace(/_/g, " ")}
+            </p>
           </div>
-          <button onClick={logout} className="text-[#9CA3AF] hover:text-red-500 transition-colors text-xs" title="Logout">⎋</button>
+          <button
+            onClick={logout}
+            title="Logout"
+            className="text-[--text-tertiary] hover:text-[--status-danger] transition-colors p-1 rounded-lg hover:bg-red-50"
+          >
+            <LogOut size={14} strokeWidth={1.75} />
+          </button>
         </div>
       </div>
     </aside>

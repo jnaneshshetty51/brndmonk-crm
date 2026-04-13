@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Bell, Plus, X } from "lucide-react";
 
 interface Notification {
   id: string;
@@ -27,56 +28,96 @@ export default function Topbar({ title }: { title: string }) {
   };
 
   return (
-    <header className="h-14 md:h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
-      {/* Mobile: show logo; desktop: show title */}
-      <div className="flex items-center gap-2 md:hidden">
-        <div className="w-7 h-7 rounded-lg bg-[#6B5B95] flex items-center justify-center text-white font-bold text-sm">B</div>
-        <span className="font-bold text-[#2D3142] text-sm">Brndmonk</span>
+    <header className="h-14 md:h-16 bg-white/80 backdrop-blur-sm border-b border-[--border] flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
+      {/* Mobile: logo | Desktop: page title */}
+      <div className="flex items-center gap-2.5 md:hidden">
+        <div className="w-7 h-7 rounded-lg bg-[--brand-primary] flex items-center justify-center text-white font-bold text-xs shadow-sm">
+          B
+        </div>
+        <span className="font-bold text-[--text-primary] text-sm">Brndmonk</span>
       </div>
-      <h1 className="hidden md:block text-lg font-semibold text-[#2D3142]">{title}</h1>
-      <div className="flex items-center gap-3">
+      <h1 className="hidden md:block text-lg font-bold text-[--text-primary] tracking-tight">
+        {title}
+      </h1>
+
+      <div className="flex items-center gap-2.5">
         {/* Notifications */}
         <div className="relative">
           <button
             onClick={() => setShowNotifs(!showNotifs)}
-            className="relative w-9 h-9 rounded-lg border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-gray-50 transition-colors"
+            className="relative w-9 h-9 rounded-xl border border-[--border] flex items-center justify-center text-[--text-secondary] hover:bg-[--bg-app] hover:border-[--border-strong] transition-all"
           >
-            🔔
+            <Bell size={16} strokeWidth={1.75} />
             {unread > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[--status-danger] text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                 {unread > 9 ? "9+" : unread}
               </span>
             )}
           </button>
+
           {showNotifs && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E7EB]">
-                <span className="text-sm font-semibold text-[#2D3142]">Notifications</span>
-                {unread > 0 && (
-                  <button onClick={markAllRead} className="text-xs text-[#6B5B95] hover:underline">
-                    Mark all read
+            <div className="absolute right-0 mt-2 w-80 bg-white border border-[--border] rounded-2xl shadow-xl z-50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[--border]">
+                <span className="text-sm font-semibold text-[--text-primary]">
+                  Notifications
+                  {unread > 0 && (
+                    <span className="ml-2 text-[10px] font-bold bg-[--brand-primary-light] text-[--brand-primary] px-1.5 py-0.5 rounded-full">
+                      {unread} new
+                    </span>
+                  )}
+                </span>
+                <div className="flex items-center gap-2">
+                  {unread > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      className="text-xs text-[--brand-primary] hover:underline font-medium"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowNotifs(false)}
+                    className="text-[--text-tertiary] hover:text-[--text-primary] transition-colors"
+                  >
+                    <X size={14} />
                   </button>
-                )}
+                </div>
               </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-[#F3F4F6]">
+              <div className="max-h-72 overflow-y-auto divide-y divide-[--border]">
                 {notifications.length === 0 ? (
-                  <p className="text-sm text-[#9CA3AF] text-center py-6">No notifications</p>
+                  <div className="py-10 text-center">
+                    <Bell size={24} className="mx-auto text-[--text-tertiary] mb-2" strokeWidth={1.5} />
+                    <p className="text-sm text-[--text-tertiary]">No notifications yet</p>
+                  </div>
                 ) : (
                   notifications.map((n) => (
                     <div
                       key={n.id}
-                      className={`px-4 py-3 text-sm ${n.status === "unread" ? "bg-[#6B5B95]/5" : ""}`}
+                      className={`px-4 py-3 text-sm transition-colors ${
+                        n.status === "unread"
+                          ? "bg-[--brand-primary-light]/50"
+                          : "hover:bg-[--bg-app]"
+                      }`}
                     >
-                      <p className="text-[#2D3142] leading-relaxed">{n.message}</p>
-                      <p className="text-[#9CA3AF] text-xs mt-1">
+                      {n.status === "unread" && (
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[--brand-primary] mr-2 mb-0.5 align-middle" />
+                      )}
+                      <span className="text-[--text-primary] leading-relaxed">
+                        {n.message}
+                      </span>
+                      <p className="text-[--text-tertiary] text-xs mt-1">
                         {new Date(n.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   ))
                 )}
               </div>
-              <div className="px-4 py-2.5 border-t border-[#E5E7EB]">
-                <Link href="/notifications" onClick={() => setShowNotifs(false)} className="text-xs text-[#6B5B95] font-medium hover:underline">
+              <div className="px-4 py-2.5 border-t border-[--border] bg-[--bg-app]">
+                <Link
+                  href="/notifications"
+                  onClick={() => setShowNotifs(false)}
+                  className="text-xs text-[--brand-primary] font-semibold hover:underline"
+                >
                   View all notifications →
                 </Link>
               </div>
@@ -84,12 +125,13 @@ export default function Topbar({ title }: { title: string }) {
           )}
         </div>
 
-        {/* Quick create */}
+        {/* CTA */}
         <Link
           href="/clients"
-          className="px-4 py-2 bg-[#6B5B95] text-white text-sm font-medium rounded-lg hover:bg-[#5A4A84] transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 bg-[--brand-primary] text-white text-sm font-semibold rounded-xl hover:bg-[--brand-primary-hover] transition-colors shadow-sm"
         >
-          + New Client
+          <Plus size={15} strokeWidth={2.5} />
+          New Client
         </Link>
       </div>
     </header>

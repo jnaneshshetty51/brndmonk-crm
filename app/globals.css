@@ -1,32 +1,50 @@
 @import "tailwindcss";
 
 :root {
-  --brand-purple: #6B5B95;
-  --brand-teal: #5DCCC4;
-  --brand-pink: #D4A5A5;
-  --brand-peach: #F5C5B8;
-  --brand-gold: #D4A574;
-  --background: #FAFAFA;
-  --card-bg: #FFFFFF;
-  --text-primary: #2D3142;
-  --text-secondary: #6B7280;
+  /* Primary — richer indigo-violet */
+  --brand-primary: #5B4FCF;
+  --brand-primary-light: #EEEEFF;
+  --brand-primary-hover: #4B3FBF;
+
+  /* Accent */
+  --brand-accent: #0ABFBC;
+
+  /* Surface */
+  --bg-app: #F4F5F7;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FAFBFF;
+
+  /* Text */
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
   --text-tertiary: #9CA3AF;
-  --border: #E5E7EB;
+
+  /* Border */
+  --border: #E4E7EC;
+  --border-strong: #D0D5DC;
+
+  /* Status */
+  --status-success: #12B76A;
+  --status-warning: #F79009;
+  --status-danger: #F04438;
+  --status-info: #2E90FA;
 }
 
 body {
-  background: var(--background);
+  background: var(--bg-app);
   color: var(--text-primary);
-  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans), 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }

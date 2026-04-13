@@ -4,6 +4,13 @@ export function apiSuccess(data: unknown, status = 200) {
   return NextResponse.json({ success: true, data }, { status });
 }
 
+// Use for GET list endpoints — serves cached response immediately, refreshes in background
+export function apiSuccessCached(data: unknown, maxAge = 30) {
+  const res = NextResponse.json({ success: true, data });
+  res.headers.set("Cache-Control", `private, max-age=${maxAge}, stale-while-revalidate=60`);
+  return res;
+}
+
 export function apiError(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status });
 }

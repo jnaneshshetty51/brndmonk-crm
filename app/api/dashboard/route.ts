@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserFromRequest } from "@/lib/auth";
-import { apiSuccess, apiError } from "@/lib/utils";
+import { apiSuccessCached, apiError } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req);
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     prisma.notification.count({ where: { status: "unread" } }),
   ]);
 
-  return apiSuccess({
+  return apiSuccessCached({
     stats: {
       totalClients,
       activeClients,

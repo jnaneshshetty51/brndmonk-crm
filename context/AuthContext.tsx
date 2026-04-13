@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface User {
@@ -18,16 +18,35 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Module-level cache so auth check doesn't re-run on client-side navigation
+let cachedUser: User | null | undefined = undefined;
+let fetchPromise: Promise<User | null> | null = null;
+
+function fetchCurrentUser(): Promise<User | null> {
+  if (fetchPromise) return fetchPromise;
+  fetchPromise = fetch("/api/auth/me", { credentials: "include" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data) => {
+      const u = data?.success ? (data.data as User) : null;
+      cachedUser = u;
+      return u;
+    })
+    .catch(() => { cachedUser = null; return null; })
+    .finally(() => { fetchPromise = null; });
+  return fetchPromise;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(cachedUser ?? null);
+  const [loading, setLoading] = useState(cachedUser === undefined);
   const router = useRouter();
+  const initialized = useRef(false);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data?.success) setUser(data.data); })
-      .finally(() => setLoading(false));
+    if (initialized.current) return;
+    initialized.current = true;
+    if (cachedUser !== undefined) { setUser(cachedUser); setLoading(false); return; }
+    fetchCurrentUser().then((u) => { setUser(u); setLoading(false); });
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -38,12 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
+    cachedUser = data.data.user;
     setUser(data.data.user);
     router.push("/dashboard");
   };
 
   const logout = async () => {
     await fetch("/api/auth/me", { method: "DELETE" });
+    cachedUser = null;
     setUser(null);
     router.push("/login");
   };

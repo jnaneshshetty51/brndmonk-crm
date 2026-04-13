@@ -77,11 +77,11 @@ export default function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Clients" value={s?.totalClients || 0} sub={`${s?.activeClients} active`} color="text-[#6B5B95]" href="/dashboard/clients" />
-          <StatCard label="Briefs Approved" value={s?.approvedBriefs || 0} sub={`${s?.pendingBriefs} pending`} color="text-green-600" href="/dashboard/calendars" />
-          <StatCard label="Briefs Rejected" value={s?.rejectedBriefs || 0} sub="needs revision" color="text-red-500" href="/dashboard/calendars" />
-          <StatCard label="Videos for Review" value={s?.videosAwaitingApproval || 0} sub="awaiting approval" color="text-[#D4A574]" href="/dashboard/videos" />
-          <StatCard label="Active Projects" value={s?.activeProjects || 0} sub="in progress" color="text-[#5DCCC4]" href="/dashboard/projects" />
+          <StatCard label="Total Clients" value={s?.totalClients || 0} sub={`${s?.activeClients} active`} color="text-[#6B5B95]" href="/clients" />
+          <StatCard label="Briefs Approved" value={s?.approvedBriefs || 0} sub={`${s?.pendingBriefs} pending`} color="text-green-600" href="/calendars" />
+          <StatCard label="Briefs Rejected" value={s?.rejectedBriefs || 0} sub="needs revision" color="text-red-500" href="/calendars" />
+          <StatCard label="Videos for Review" value={s?.videosAwaitingApproval || 0} sub="awaiting approval" color="text-[#D4A574]" href="/videos" />
+          <StatCard label="Active Projects" value={s?.activeProjects || 0} sub="in progress" color="text-[#5DCCC4]" href="/projects" />
           <StatCard label="Notifications" value={s?.unreadNotifications || 0} sub="unread" color="text-[#D4A5A5]" />
         </div>
 
@@ -89,7 +89,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-[#E5E7EB]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB]">
             <h2 className="font-semibold text-[#2D3142]">Upcoming Shoots (Next 7 Days)</h2>
-            <Link href="/dashboard/shoots" className="text-sm text-[#6B5B95] hover:underline font-medium">
+            <Link href="/shoots" className="text-sm text-[#6B5B95] hover:underline font-medium">
               View all →
             </Link>
           </div>
@@ -97,7 +97,7 @@ export default function DashboardPage() {
             <div className="px-6 py-8 text-center">
               <p className="text-[#9CA3AF] text-sm">No shoots scheduled in the next 7 days</p>
               <Link
-                href="/dashboard/shoots"
+                href="/shoots"
                 className="mt-3 inline-block text-sm text-[#6B5B95] font-medium hover:underline"
               >
                 Schedule a shoot →
@@ -130,10 +130,10 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { href: "/dashboard/clients", label: "Add Client", icon: "👥", desc: "Create new client" },
-            { href: "/dashboard/calendars", label: "New Calendar", icon: "📅", desc: "Plan content month" },
-            { href: "/dashboard/shoots", label: "Schedule Shoot", icon: "🎬", desc: "Book a shoot" },
-            { href: "/dashboard/projects", label: "New Project", icon: "💻", desc: "Start a project" },
+            { href: "/clients", label: "Add Client", icon: "👥", desc: "Create new client" },
+            { href: "/calendars", label: "New Calendar", icon: "📅", desc: "Plan content month" },
+            { href: "/shoots", label: "Schedule Shoot", icon: "🎬", desc: "Book a shoot" },
+            { href: "/projects", label: "New Project", icon: "💻", desc: "Start a project" },
           ].map((item) => (
             <Link
               key={item.href}

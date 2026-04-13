@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   const clientId = searchParams.get("clientId");
   const calendarId = searchParams.get("calendarId");
   const status = searchParams.get("status");
+  const limit = searchParams.get("limit");
 
   const videos = await prisma.video.findMany({
     where: {
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
       ...(calendarId ? { calendarId } : {}),
       ...(status ? { status } : {}),
     },
+    ...(limit ? { take: parseInt(limit) } : {}),
     include: {
       client: { select: { id: true, name: true } },
       brief: { select: { id: true, ideaTitle: true, contentType: true } },

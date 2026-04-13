@@ -36,14 +36,21 @@ export async function POST(req: NextRequest) {
     specialRequirements, approvalDeadline,
   } = body;
 
-  if (!calendarId || !contentType || !ideaTitle || !ideaDescription || !visualDescription || !script) {
+  if (!calendarId || !contentType || !ideaTitle) {
     return apiError("Missing required fields");
+  }
+
+  // Auto-generate briefNumber if not provided
+  let finalBriefNumber = briefNumber;
+  if (!finalBriefNumber) {
+    const count = await prisma.contentBrief.count({ where: { calendarId } });
+    finalBriefNumber = String(count + 1);
   }
 
   const brief = await prisma.contentBrief.create({
     data: {
       calendarId,
-      briefNumber: briefNumber || "1",
+      briefNumber: finalBriefNumber,
       contentType,
       ideaTitle,
       ideaDescription,

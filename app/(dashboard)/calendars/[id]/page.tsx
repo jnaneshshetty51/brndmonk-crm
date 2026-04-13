@@ -500,7 +500,7 @@ export default function CalendarDetailPage() {
         </div>
 
         <div className="pb-4">
-          <Link href="/dashboard/calendars" className="text-sm text-[#6B5B95] hover:underline">← Back to Calendars</Link>
+          <Link href="/calendars" className="text-sm text-[#6B5B95] hover:underline">← Back to Calendars</Link>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import { useAuth } from "@/context/AuthContext";
 
@@ -81,6 +82,7 @@ export default function SettingsPage() {
     setPassSaving(false);
   };
 
+  const { can } = useAuth();
   const inputClass = "w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B5B95]/30 focus:border-[#6B5B95]";
   const labelClass = "block text-sm font-medium text-[#2D3142] mb-1.5";
 
@@ -116,6 +118,20 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Roles link */}
+        {can("settings", "manage_roles") && (
+          <Link href="/settings/roles" className="flex items-center justify-between bg-white rounded-xl border border-[#E5E7EB] p-4 hover:border-[#6B5B95]/40 hover:bg-[#6B5B95]/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🔐</span>
+              <div>
+                <p className="font-semibold text-[#2D3142] text-sm">Roles & Permissions</p>
+                <p className="text-xs text-[#9CA3AF]">Create roles and control what each team member can access</p>
+              </div>
+            </div>
+            <span className="text-sm text-[#6B5B95] font-medium">Manage →</span>
+          </Link>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white rounded-xl border border-[#E5E7EB] p-1 w-fit">

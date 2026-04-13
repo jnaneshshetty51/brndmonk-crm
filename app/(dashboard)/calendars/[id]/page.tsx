@@ -212,6 +212,11 @@ export default function CalendarDetailPage() {
   const [showBriefModal, setShowBriefModal] = useState(false);
   const [editBrief, setEditBrief] = useState<ContentBrief | null>(null);
   const [feedbackBrief, setFeedbackBrief] = useState<ContentBrief | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickRows, setQuickRows] = useState([{ contentType: "Reel", ideaTitle: "" }]);
+  const [quickSaving, setQuickSaving] = useState(false);
 
   const fetchCalendar = () => {
     fetch(`/api/calendars/${id}`)
@@ -231,6 +236,44 @@ export default function CalendarDetailPage() {
     if (!confirm("Delete this brief?")) return;
     await fetch(`/api/briefs/${briefId}`, { method: "DELETE" });
     fetchCalendar();
+  };
+
+  const bulkCreateBriefs = async () => {
+    const valid = quickRows.filter(r => r.ideaTitle.trim());
+    if (!valid.length) return;
+    setQuickSaving(true);
+    for (const row of valid) {
+      await fetch("/api/briefs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          calendarId: id,
+          contentType: row.contentType,
+          ideaTitle: row.ideaTitle,
+          ideaDescription: "",
+          visualDescription: "",
+          script: "",
+        }),
+      });
+    }
+    setQuickRows([{ contentType: "Reel", ideaTitle: "" }]);
+    setShowQuickAdd(false);
+    setQuickSaving(false);
+    fetchCalendar();
+  };
+
+  const sendToClient = async () => {
+    setSending(true);
+    setSendMsg(null);
+    const res = await fetch(`/api/calendars/${id}/send-to-client`, { method: "POST" });
+    const data = await res.json();
+    if (data.success) {
+      setSendMsg({ type: "success", text: "Calendar sent to client by email!" });
+      fetchCalendar();
+    } else {
+      setSendMsg({ type: "error", text: data.error || "Failed to send." });
+    }
+    setSending(false);
   };
 
   const contentTypeIcon: Record<string, string> = {
@@ -299,11 +342,22 @@ export default function CalendarDetailPage() {
           {calendar.notes && (
             <p className="mt-3 text-sm text-[#6B7280] bg-[#F9FAFB] px-4 py-3 rounded-lg">{calendar.notes}</p>
           )}
-          <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[#F3F4F6]">
-            <p className="text-xs text-[#9CA3AF]">Created {formatDate(calendar.createdAt)}</p>
-            {calendar.sentToClientAt && (
-              <p className="text-xs text-[#9CA3AF]">· Sent {formatDate(calendar.sentToClientAt)}</p>
-            )}
+          {sendMsg && (
+            <div className={`mt-3 px-4 py-2 rounded-lg text-sm ${sendMsg.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
+              {sendMsg.text}
+            </div>
+          )}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#F3F4F6]">
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-[#9CA3AF]">Created {formatDate(calendar.createdAt)}</p>
+              {calendar.sentToClientAt && (
+                <p className="text-xs text-[#9CA3AF]">· Sent {formatDate(calendar.sentToClientAt)}</p>
+              )}
+            </div>
+            <button onClick={sendToClient} disabled={sending}
+              className="px-4 py-2 bg-[#5DCCC4] text-white text-sm font-medium rounded-lg hover:bg-[#2BAAA0] disabled:opacity-50 transition-colors">
+              {sending ? "Sending..." : calendar.sentToClientAt ? "Resend to Client" : "📧 Send to Client"}
+            </button>
           </div>
         </div>
 
@@ -311,13 +365,61 @@ export default function CalendarDetailPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-[#2D3142]">Content Briefs ({briefs.length})</h3>
-            <button
-              onClick={() => { setEditBrief(null); setShowBriefModal(true); }}
-              className="px-4 py-2 bg-[#6B5B95] text-white text-sm font-medium rounded-lg hover:bg-[#5A4A84] transition-colors"
-            >
-              + Add Brief
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowQuickAdd(v => !v)}
+                className="px-3 py-2 text-sm font-medium border border-[#6B5B95] text-[#6B5B95] rounded-lg hover:bg-[#6B5B95]/5 transition-colors"
+              >
+                ⚡ Quick Add
+              </button>
+              <button
+                onClick={() => { setEditBrief(null); setShowBriefModal(true); }}
+                className="px-4 py-2 bg-[#6B5B95] text-white text-sm font-medium rounded-lg hover:bg-[#5A4A84] transition-colors"
+              >
+                + Full Brief
+              </button>
+            </div>
           </div>
+
+          {/* Quick Add rows */}
+          {showQuickAdd && (
+            <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 mb-3 space-y-2">
+              <p className="text-xs font-semibold text-[#9CA3AF] uppercase mb-3">Quick Add Multiple Briefs</p>
+              {quickRows.map((row, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <select
+                    value={row.contentType}
+                    onChange={e => setQuickRows(r => r.map((x, j) => j === i ? { ...x, contentType: e.target.value } : x))}
+                    className="px-2 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B5B95]/30 w-28"
+                  >
+                    {["Reel", "Post", "Carousel", "Story"].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <input
+                    value={row.ideaTitle}
+                    onChange={e => setQuickRows(r => r.map((x, j) => j === i ? { ...x, ideaTitle: e.target.value } : x))}
+                    placeholder="Brief title / idea..."
+                    className="flex-1 px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B5B95]/30"
+                  />
+                  {quickRows.length > 1 && (
+                    <button onClick={() => setQuickRows(r => r.filter((_, j) => j !== i))} className="text-[#9CA3AF] hover:text-red-500 text-lg px-1">×</button>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center gap-2 pt-1">
+                <button onClick={() => setQuickRows(r => [...r, { contentType: "Reel", ideaTitle: "" }])} className="text-xs text-[#6B5B95] hover:underline">+ Add row</button>
+                <div className="flex-1" />
+                <button onClick={() => setShowQuickAdd(false)} className="px-3 py-1.5 text-sm border border-[#E5E7EB] rounded-lg text-[#6B7280] hover:bg-gray-50">Cancel</button>
+                <button
+                  onClick={bulkCreateBriefs}
+                  disabled={quickSaving || quickRows.every(r => !r.ideaTitle.trim())}
+                  className="px-4 py-1.5 bg-[#6B5B95] text-white text-sm font-medium rounded-lg hover:bg-[#5A4A84] disabled:opacity-50 transition-colors"
+                >
+                  {quickSaving ? "Creating..." : `Create ${quickRows.filter(r => r.ideaTitle.trim()).length} Brief(s)`}
+                </button>
+              </div>
+            </div>
+          )}
+
 
           {briefs.length === 0 ? (
             <div className="bg-white rounded-xl border border-[#E5E7EB] p-8 text-center">

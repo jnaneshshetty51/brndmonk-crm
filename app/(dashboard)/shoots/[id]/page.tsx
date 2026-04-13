@@ -51,6 +51,9 @@ export default function ShootDetailPage() {
 
   useEffect(() => { fetchShoot(); }, [id]);
 
+  const [creatingVideos, setCreatingVideos] = useState(false);
+  const [videosCreated, setVideosCreated] = useState(false);
+
   const updateShoot = async () => {
     setUpdating(true);
     await fetch(`/api/shoots/${id}`, {
@@ -61,6 +64,15 @@ export default function ShootDetailPage() {
     setShowUpdate(false);
     fetchShoot();
     setUpdating(false);
+  };
+
+  const createVideosFromShoot = async () => {
+    if (!shoot) return;
+    setCreatingVideos(true);
+    const res = await fetch(`/api/shoots/${id}/create-videos`, { method: "POST" });
+    const data = await res.json();
+    if (data.success) setVideosCreated(true);
+    setCreatingVideos(false);
   };
 
   if (loading) return (
@@ -122,6 +134,25 @@ export default function ShootDetailPage() {
               ))}
             </div>
           </div>
+
+          {/* Auto-create videos banner */}
+          {shoot.status === "completed" && !videosCreated && (
+            <div className="mt-4 pt-4 border-t border-[#F3F4F6] flex items-center justify-between bg-[#5DCCC4]/10 rounded-lg p-3">
+              <div>
+                <p className="text-sm font-medium text-[#2BAAA0]">Shoot complete — ready to create videos?</p>
+                <p className="text-xs text-[#6B7280] mt-0.5">Auto-creates a video entry in the pipeline for each linked brief.</p>
+              </div>
+              <button onClick={createVideosFromShoot} disabled={creatingVideos}
+                className="px-4 py-2 bg-[#5DCCC4] text-white text-sm font-medium rounded-lg hover:bg-[#2BAAA0] disabled:opacity-50 transition-colors flex-shrink-0">
+                {creatingVideos ? "Creating..." : "🎥 Create Videos"}
+              </button>
+            </div>
+          )}
+          {videosCreated && (
+            <div className="mt-4 pt-4 border-t border-[#F3F4F6] bg-green-50 rounded-lg p-3">
+              <p className="text-sm font-medium text-green-700">✓ Videos created and added to the pipeline.</p>
+            </div>
+          )}
 
           {/* Update form */}
           {showUpdate && (

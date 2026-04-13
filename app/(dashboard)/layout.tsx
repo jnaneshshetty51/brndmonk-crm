@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Sidebar from "@/components/Sidebar";
+import MobileNav from "@/components/MobileNav";
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -30,9 +31,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-[#FAFAFA]">
       <Sidebar />
-      <main className="flex-1 ml-60 min-h-screen overflow-x-hidden">
+      <main className="flex-1 md:ml-60 min-h-screen overflow-x-hidden pb-16 md:pb-0">
         {children}
       </main>
+      <MobileNav />
     </div>
   );
 }

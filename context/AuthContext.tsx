@@ -1,24 +1,28 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import { useRouter } from "next/navigation";
+import type { Permissions } from "@/lib/permissions";
+import { can as canCheck } from "@/lib/permissions";
 
 interface User {
   id: string;
   email: string;
   name: string;
   role: string;
+  permissions: Permissions | null;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  can: (section: string, action: string) => boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Module-level cache so auth check doesn't re-run on client-side navigation
+// Module-level cache — runs once per session, not on every navigation
 let cachedUser: User | null | undefined = undefined;
 let fetchPromise: Promise<User | null> | null = null;
 
@@ -57,8 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
-    cachedUser = data.data.user;
-    setUser(data.data.user);
+    // Fetch full user with permissions after login
+    cachedUser = undefined;
+    const full = await fetchCurrentUser();
+    setUser(full);
     router.push("/dashboard");
   };
 
@@ -69,8 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   };
 
+  const can = (section: string, action: string): boolean => {
+    if (!user?.permissions) return user?.role === "admin";
+    return canCheck(user.permissions, section as Parameters<typeof canCheck>[1], action);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, can, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

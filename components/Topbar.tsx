@@ -27,8 +27,13 @@ export default function Topbar({ title }: { title: string }) {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-6 sticky top-0 z-30">
-      <h1 className="text-lg font-semibold text-[#2D3142]">{title}</h1>
+    <header className="h-14 md:h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
+      {/* Mobile: show logo; desktop: show title */}
+      <div className="flex items-center gap-2 md:hidden">
+        <div className="w-7 h-7 rounded-lg bg-[#6B5B95] flex items-center justify-center text-white font-bold text-sm">B</div>
+        <span className="font-bold text-[#2D3142] text-sm">Brndmonk</span>
+      </div>
+      <h1 className="hidden md:block text-lg font-semibold text-[#2D3142]">{title}</h1>
       <div className="flex items-center gap-3">
         {/* Notifications */}
         <div className="relative">

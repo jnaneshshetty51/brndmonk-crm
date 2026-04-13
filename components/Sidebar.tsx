@@ -3,28 +3,46 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "⊞" },
-  { href: "/clients", label: "Clients", icon: "👥" },
-  { href: "/calendars", label: "Calendars", icon: "📅" },
-  { href: "/shoots", label: "Shoots", icon: "🎬" },
-  { href: "/videos", label: "Videos", icon: "🎥" },
-  { href: "/projects", label: "Projects", icon: "💻" },
-  { href: "/teams", label: "Team", icon: "🤝" },
+const mainNav = [
+  { href: "/dashboard",         label: "Dashboard",        icon: "⊞", section: null },
+  { href: "/clients",           label: "Clients",          icon: "👥", section: "clients" },
+  { href: "/calendars",         label: "Calendars",        icon: "📅", section: "calendars" },
+  { href: "/shoots",            label: "Shoots",           icon: "🎬", section: "shoots" },
+  { href: "/videos",            label: "Videos",           icon: "🎥", section: "videos" },
+  { href: "/projects",          label: "Projects",         icon: "💻", section: "projects" },
+  { href: "/teams",             label: "Team",             icon: "🤝", section: "teams" },
 ];
 
-const bottomNavItems = [
-  { href: "/posting-calendar", label: "Posting Calendar", icon: "🗓️" },
-  { href: "/notifications", label: "Notifications", icon: "🔔" },
-  { href: "/settings", label: "Settings", icon: "⚙️" },
+const bottomNav = [
+  { href: "/posting-calendar",  label: "Posting Calendar", icon: "🗓️", section: "posting_calendar" },
+  { href: "/notifications",     label: "Notifications",    icon: "🔔", section: "notifications" },
+  { href: "/settings",          label: "Settings",         icon: "⚙️", section: "settings" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, can, logout } = useAuth();
+
+  const isVisible = (section: string | null) => {
+    if (!section) return true; // dashboard always visible
+    return can(section, "view");
+  };
+
+  const NavLink = ({ href, icon, label }: { href: string; icon: string; label: string }) => {
+    const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+    return (
+      <Link href={href}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+          active ? "bg-[#6B5B95]/10 text-[#6B5B95]" : "text-[#6B7280] hover:bg-gray-50 hover:text-[#2D3142]"
+        }`}>
+        <span className="text-base">{icon}</span>
+        {label}
+      </Link>
+    );
+  };
 
   return (
-    <aside className="w-60 min-h-screen bg-white border-r border-[#E5E7EB] flex flex-col fixed left-0 top-0 z-40">
+    <aside className="w-60 min-h-screen bg-white border-r border-[#E5E7EB] flex flex-col fixed left-0 top-0 z-40 hidden md:flex">
       {/* Logo */}
       <div className="px-6 py-5 border-b border-[#E5E7EB]">
         <div className="flex items-center gap-2">
@@ -33,44 +51,16 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Nav */}
+      {/* Main nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                active
-                  ? "bg-[#6B5B95]/10 text-[#6B5B95]"
-                  : "text-[#6B7280] hover:bg-gray-50 hover:text-[#2D3142]"
-              }`}
-            >
-              <span className="text-base">{item.icon}</span>
-              {item.label}
-            </Link>
-          );
-        })}
+        {mainNav.filter(item => isVisible(item.section)).map(item => (
+          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
+        ))}
 
-        <div className="pt-2 mt-2 border-t border-[#F3F4F6]">
-          {bottomNavItems.map((item) => {
-            const active = pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  active
-                    ? "bg-[#6B5B95]/10 text-[#6B5B95]"
-                    : "text-[#6B7280] hover:bg-gray-50 hover:text-[#2D3142]"
-                }`}
-              >
-                <span className="text-base">{item.icon}</span>
-                {item.label}
-              </Link>
-            );
-          })}
+        <div className="pt-2 mt-2 border-t border-[#F3F4F6] space-y-0.5">
+          {bottomNav.filter(item => isVisible(item.section)).map(item => (
+            <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
+          ))}
         </div>
       </nav>
 
@@ -82,15 +72,9 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-[#2D3142] truncate">{user?.name}</p>
-            <p className="text-xs text-[#9CA3AF] truncate capitalize">{user?.role}</p>
+            <p className="text-xs text-[#9CA3AF] truncate capitalize">{user?.role?.replace(/_/g, " ")}</p>
           </div>
-          <button
-            onClick={logout}
-            className="text-[#9CA3AF] hover:text-red-500 transition-colors text-xs"
-            title="Logout"
-          >
-            ⎋
-          </button>
+          <button onClick={logout} className="text-[#9CA3AF] hover:text-red-500 transition-colors text-xs" title="Logout">⎋</button>
         </div>
       </div>
     </aside>

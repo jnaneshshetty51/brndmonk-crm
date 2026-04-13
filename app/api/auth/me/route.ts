@@ -13,7 +13,10 @@ export async function GET(req: NextRequest) {
   });
 
   if (!user) return apiError("User not found", 404);
-  return apiSuccess(user);
+
+  // Load role permissions
+  const systemRole = await prisma.systemRole.findUnique({ where: { name: user.role } });
+  return apiSuccess({ ...user, permissions: systemRole?.permissions ?? null });
 }
 
 export async function PUT(req: NextRequest) {

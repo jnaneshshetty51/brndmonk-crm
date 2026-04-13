@@ -5,12 +5,18 @@ import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "⊞" },
-  { href: "/dashboard/clients", label: "Clients", icon: "👥" },
-  { href: "/dashboard/calendars", label: "Calendars", icon: "📅" },
-  { href: "/dashboard/shoots", label: "Shoots", icon: "🎬" },
-  { href: "/dashboard/videos", label: "Videos", icon: "🎥" },
-  { href: "/dashboard/projects", label: "Projects", icon: "💻" },
-  { href: "/dashboard/teams", label: "Team", icon: "🤝" },
+  { href: "/clients", label: "Clients", icon: "👥" },
+  { href: "/calendars", label: "Calendars", icon: "📅" },
+  { href: "/shoots", label: "Shoots", icon: "🎬" },
+  { href: "/videos", label: "Videos", icon: "🎥" },
+  { href: "/projects", label: "Projects", icon: "💻" },
+  { href: "/teams", label: "Team", icon: "🤝" },
+];
+
+const bottomNavItems = [
+  { href: "/posting-calendar", label: "Posting Calendar", icon: "🗓️" },
+  { href: "/notifications", label: "Notifications", icon: "🔔" },
+  { href: "/settings", label: "Settings", icon: "⚙️" },
 ];
 
 export default function Sidebar() {
@@ -46,6 +52,26 @@ export default function Sidebar() {
             </Link>
           );
         })}
+
+        <div className="pt-2 mt-2 border-t border-[#F3F4F6]">
+          {bottomNavItems.map((item) => {
+            const active = pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  active
+                    ? "bg-[#6B5B95]/10 text-[#6B5B95]"
+                    : "text-[#6B7280] hover:bg-gray-50 hover:text-[#2D3142]"
+                }`}
+              >
+                <span className="text-base">{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
       {/* User */}

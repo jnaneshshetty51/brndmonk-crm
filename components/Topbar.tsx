@@ -70,13 +70,18 @@ export default function Topbar({ title }: { title: string }) {
                   ))
                 )}
               </div>
+              <div className="px-4 py-2.5 border-t border-[#E5E7EB]">
+                <Link href="/notifications" onClick={() => setShowNotifs(false)} className="text-xs text-[#6B5B95] font-medium hover:underline">
+                  View all notifications →
+                </Link>
+              </div>
             </div>
           )}
         </div>
 
         {/* Quick create */}
         <Link
-          href="/dashboard/clients"
+          href="/clients"
           className="px-4 py-2 bg-[#6B5B95] text-white text-sm font-medium rounded-lg hover:bg-[#5A4A84] transition-colors"
         >
           + New Client

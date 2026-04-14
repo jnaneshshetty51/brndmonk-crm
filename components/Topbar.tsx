@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, Plus, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Bell, Plus, X, CheckCheck, Sparkles } from "lucide-react";
 
 interface Notification {
   id: string;
@@ -11,9 +12,17 @@ interface Notification {
   createdAt: string;
 }
 
+const typeIcon: Record<string, { bg: string; dot: string }> = {
+  info:    { bg: "bg-blue-50",   dot: "bg-blue-400" },
+  success: { bg: "bg-emerald-50", dot: "bg-emerald-400" },
+  warning: { bg: "bg-amber-50",  dot: "bg-amber-400" },
+  error:   { bg: "bg-red-50",    dot: "bg-red-400" },
+};
+
 export default function Topbar({ title }: { title: string }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
+  const { user } = useAuth();
   const unread = notifications.filter((n) => n.status === "unread").length;
 
   useEffect(() => {
@@ -27,96 +36,139 @@ export default function Topbar({ title }: { title: string }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, status: "read" })));
   };
 
+  const initials = user?.name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
-    <header className="h-14 md:h-16 bg-white/80 backdrop-blur-sm border-b border-[--border] flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
+    <header className="h-16 bg-white border-b border-[#E2E8F0] flex items-center justify-between px-6 sticky top-0 z-30">
       {/* Mobile: logo | Desktop: page title */}
-      <div className="flex items-center gap-2.5 md:hidden">
-        <div className="w-7 h-7 rounded-lg bg-[--brand-primary] flex items-center justify-center text-white font-bold text-xs shadow-sm">
+      <div className="flex items-center gap-3 md:hidden">
+        <div 
+          className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-sm"
+          style={{ background: "var(--gradient-brand)", boxShadow: "0 4px 10px rgba(99,102,241,0.4)" }}
+        >
           B
         </div>
-        <span className="font-bold text-[--text-primary] text-sm">Brndmonk</span>
+        <span className="font-bold text-[#0F172A] text-sm">Brndmonk</span>
       </div>
-      <h1 className="hidden md:block text-lg font-bold text-[--text-primary] tracking-tight">
-        {title}
-      </h1>
 
-      <div className="flex items-center gap-2.5">
-        {/* Notifications */}
+      <div className="hidden md:flex items-center gap-2">
+        <h1 className="text-lg font-bold text-[--text-primary] tracking-tight">
+          {title}
+        </h1>
+        <span
+          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: "var(--brand-primary-light)", color: "var(--brand-primary)" }}
+        >
+          <Sparkles size={9} strokeWidth={2.5} />
+          Live
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {/* Notification bell */}
         <div className="relative">
           <button
             onClick={() => setShowNotifs(!showNotifs)}
-            className="relative w-9 h-9 rounded-xl border border-[--border] flex items-center justify-center text-[--text-secondary] hover:bg-[--bg-app] hover:border-[--border-strong] transition-all"
+            className="relative w-9 h-9 rounded-xl border border-[--border] flex items-center justify-center text-[--text-secondary] hover:bg-[--bg-app] hover:border-[--border-strong] transition-all duration-150"
           >
-            <Bell size={16} strokeWidth={1.75} />
+            <Bell size={15} strokeWidth={1.75} />
             {unread > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[--status-danger] text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+              <span
+                className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] text-white text-[10px] rounded-full flex items-center justify-center font-bold px-1"
+                style={{ background: "var(--gradient-danger)", boxShadow: "0 2px 6px rgba(239,68,68,0.5)" }}
+              >
                 {unread > 9 ? "9+" : unread}
               </span>
             )}
           </button>
 
+          {/* Notification dropdown */}
           {showNotifs && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-[--border] rounded-2xl shadow-xl z-50 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[--border]">
-                <span className="text-sm font-semibold text-[--text-primary]">
-                  Notifications
+            <div
+              className="absolute right-0 mt-2 w-[340px] bg-white border border-[--border] rounded-2xl z-50 overflow-hidden"
+              style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06)" }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3.5 border-b border-[--border]">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-[--text-primary]">Notifications</span>
                   {unread > 0 && (
-                    <span className="ml-2 text-[10px] font-bold bg-[--brand-primary-light] text-[--brand-primary] px-1.5 py-0.5 rounded-full">
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: "var(--gradient-brand)", color: "white" }}
+                    >
                       {unread} new
                     </span>
                   )}
-                </span>
-                <div className="flex items-center gap-2">
+                </div>
+                <div className="flex items-center gap-1.5">
                   {unread > 0 && (
                     <button
                       onClick={markAllRead}
-                      className="text-xs text-[--brand-primary] hover:underline font-medium"
+                      className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg transition-colors hover:bg-[--brand-primary-light]"
+                      style={{ color: "var(--brand-primary)" }}
                     >
-                      Mark all read
+                      <CheckCheck size={11} strokeWidth={2.5} />
+                      All read
                     </button>
                   )}
                   <button
                     onClick={() => setShowNotifs(false)}
-                    className="text-[--text-tertiary] hover:text-[--text-primary] transition-colors"
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-[--text-tertiary] hover:text-[--text-primary] hover:bg-[--bg-app] transition-colors"
                   >
-                    <X size={14} />
+                    <X size={13} />
                   </button>
                 </div>
               </div>
+
+              {/* List */}
               <div className="max-h-72 overflow-y-auto divide-y divide-[--border]">
                 {notifications.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <Bell size={24} className="mx-auto text-[--text-tertiary] mb-2" strokeWidth={1.5} />
-                    <p className="text-sm text-[--text-tertiary]">No notifications yet</p>
+                  <div className="py-12 text-center">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                      style={{ background: "var(--bg-app)" }}
+                    >
+                      <Bell size={20} className="text-[--text-tertiary]" strokeWidth={1.5} />
+                    </div>
+                    <p className="text-sm font-medium text-[--text-secondary]">All caught up!</p>
+                    <p className="text-xs text-[--text-tertiary] mt-0.5">No notifications yet.</p>
                   </div>
                 ) : (
-                  notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`px-4 py-3 text-sm transition-colors ${
-                        n.status === "unread"
-                          ? "bg-[--brand-primary-light]/50"
-                          : "hover:bg-[--bg-app]"
-                      }`}
-                    >
-                      {n.status === "unread" && (
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[--brand-primary] mr-2 mb-0.5 align-middle" />
-                      )}
-                      <span className="text-[--text-primary] leading-relaxed">
-                        {n.message}
-                      </span>
-                      <p className="text-[--text-tertiary] text-xs mt-1">
-                        {new Date(n.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  ))
+                  notifications.map((n) => {
+                    const t = typeIcon[n.type] ?? typeIcon.info;
+                    return (
+                      <div
+                        key={n.id}
+                        className={`flex items-start gap-3 px-4 py-3.5 transition-colors ${
+                          n.status === "unread" ? "bg-[--brand-primary-light]/40" : "hover:bg-[--bg-app]"
+                        }`}
+                      >
+                        <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${t.dot} ${n.status !== "unread" ? "opacity-30" : ""}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-[--text-primary] leading-snug">{n.message}</p>
+                          <p className="text-[11px] text-[--text-tertiary] mt-1">
+                            {new Date(n.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
-              <div className="px-4 py-2.5 border-t border-[--border] bg-[--bg-app]">
+
+              {/* Footer */}
+              <div className="px-4 py-3 border-t border-[--border] bg-[--bg-app]">
                 <Link
                   href="/notifications"
                   onClick={() => setShowNotifs(false)}
-                  className="text-xs text-[--brand-primary] font-semibold hover:underline"
+                  className="text-xs font-bold transition-opacity hover:opacity-70"
+                  style={{ color: "var(--brand-primary)" }}
                 >
                   View all notifications →
                 </Link>
@@ -128,11 +180,27 @@ export default function Topbar({ title }: { title: string }) {
         {/* CTA */}
         <Link
           href="/clients"
-          className="flex items-center gap-1.5 px-4 py-2 bg-[--brand-primary] text-white text-sm font-semibold rounded-xl hover:bg-[--brand-primary-hover] transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-4 py-2 text-white text-sm font-semibold rounded-xl transition-all duration-150 hover:opacity-90 active:scale-95"
+          style={{
+            background: "var(--gradient-brand)",
+            boxShadow: "0 4px 12px rgba(99,102,241,0.35)",
+          }}
         >
-          <Plus size={15} strokeWidth={2.5} />
-          New Client
+          <Plus size={14} strokeWidth={2.5} />
+          <span className="hidden sm:inline">New Client</span>
+          <span className="sm:hidden">New</span>
         </Link>
+
+        {/* User avatar (desktop) */}
+        {initials && (
+          <div
+            className="hidden md:flex w-8 h-8 rounded-full items-center justify-center text-white font-bold text-xs cursor-default shrink-0"
+            style={{ background: "var(--gradient-accent)", boxShadow: "0 2px 8px rgba(6,182,212,0.35)" }}
+            title={user?.name}
+          >
+            {initials}
+          </div>
+        )}
       </div>
     </header>
   );

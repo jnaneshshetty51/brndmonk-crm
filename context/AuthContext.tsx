@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    if (cachedUser !== undefined) { setUser(cachedUser); setLoading(false); return; }
+    if (cachedUser !== undefined) { return; }
     fetchCurrentUser().then((u) => { setUser(u); setLoading(false); });
   }, []);
 

@@ -51,7 +51,6 @@ export default function PostingCalendarPage() {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
     const params = new URLSearchParams({ limit: "200" });
     if (clientFilter) params.set("clientId", clientFilter);
     fetch(`/api/videos?${params}`)

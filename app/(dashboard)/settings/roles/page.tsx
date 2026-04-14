@@ -294,7 +294,7 @@ export default function RolesPage() {
                   disabled={!canManage}
                 />
                 {!canManage && (
-                  <p className="text-xs text-[#9CA3AF] mt-4 text-center">You don't have permission to edit roles.</p>
+                  <p className="text-xs text-[#9CA3AF] mt-4 text-center">You don&apos;t have permission to edit roles.</p>
                 )}
               </div>
             ) : (

@@ -276,7 +276,7 @@ export default function VideoDetailPage() {
                         <span className="text-xs text-[#9CA3AF]">{formatDate(v.uploadedAt)}</span>
                       </div>
                       <a href={v.link} target="_blank" rel="noreferrer" className="text-xs text-[#6B5B95] hover:underline truncate block">View Video →</a>
-                      {v.feedback && <p className="text-xs text-[#6B7280] mt-1 italic">"{v.feedback}"</p>}
+                      {v.feedback && <p className="text-xs text-[#6B7280] mt-1 italic">&ldquo;{v.feedback}&rdquo;</p>}
                     </div>
                   ))}
                 </div>

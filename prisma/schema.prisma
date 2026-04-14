@@ -44,6 +44,7 @@ model Client {
   videos        Video[]
   projects      Project[]
   notifications Notification[]
+  invoices      Invoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -246,6 +247,49 @@ model TeamMember {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============ INVOICES ============
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  lineItems  Json  @default("[]") // [{description, qty, rate, amount}]
+  subtotal   Float @default(0)
+  taxPercent Float @default(0)
+  taxAmount  Float @default(0)
+  total      Float @default(0)
+
+  status  String    @default("draft") // draft, sent, paid, overdue
+  dueDate DateTime?
+  paidAt  DateTime?
+  sentAt  DateTime?
+  notes   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+// ============ ACTIVITY LOG ============
+model ActivityLog {
+  id         String  @id @default(cuid())
+  userId     String?
+  userName   String?
+  action     String
+  entity     String
+  entityId   String?
+  entityName String?
+  details    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
 }
 
 // ============ NOTIFICATIONS ============

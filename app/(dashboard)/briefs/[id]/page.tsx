@@ -37,6 +37,15 @@ interface Brief {
 
 const contentTypeIcon: Record<string, string> = { Reel: "🎬", Post: "📸", Carousel: "📑", Story: "⭕" };
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl border border-[#E5E7EB] p-5">
+      <h3 className="font-semibold text-[#2D3142] mb-3 text-sm uppercase tracking-wide text-[#9CA3AF]">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
 export default function BriefDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [brief, setBrief] = useState<Brief | null>(null);
@@ -84,13 +93,6 @@ export default function BriefDetailPage() {
   if (!brief) return (
     <div><Topbar title="Brief" />
       <div className="p-6"><p className="text-[#9CA3AF]">Brief not found.</p></div>
-    </div>
-  );
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="bg-white rounded-xl border border-[#E5E7EB] p-5">
-      <h3 className="font-semibold text-[#2D3142] mb-3 text-sm uppercase tracking-wide text-[#9CA3AF]">{title}</h3>
-      {children}
     </div>
   );
 

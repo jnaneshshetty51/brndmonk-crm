@@ -113,6 +113,7 @@ model ContentBrief {
   postTime          String?   // e.g. "10:30 PM"
   phase             String?   // e.g. "Phase 1"
   caption           String?   // Full Instagram caption (separate from script)
+  driveLink         String?   // Google Drive link for final content
 
   shoots Shoot[]
   videos Video[]

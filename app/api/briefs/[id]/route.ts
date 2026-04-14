@@ -63,6 +63,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       postTime: body.postTime !== undefined ? body.postTime : existing.postTime,
       phase: body.phase !== undefined ? body.phase : existing.phase,
       caption: body.caption !== undefined ? body.caption : existing.caption,
+      driveLink: body.driveLink !== undefined ? body.driveLink : existing.driveLink,
     },
   });
 

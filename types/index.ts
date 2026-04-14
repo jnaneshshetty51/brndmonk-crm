@@ -75,6 +75,11 @@ export interface ContentBrief {
   sentToClientAt?: string;
   approvedAt?: string;
   lastRevisedAt?: string;
+  scheduledPostDate?: string;
+  postTime?: string;
+  phase?: string;
+  caption?: string;
+  driveLink?: string;
   createdAt: string;
   updatedAt: string;
 }

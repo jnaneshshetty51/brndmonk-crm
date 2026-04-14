@@ -1,151 +1,218 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { getStatusColor, getStatusLabel, formatDate } from "@/lib/utils";
-import type { Calendar, ContentBrief } from "@/types";
+import { formatDate } from "@/lib/utils";
 import {
-  Film, Image as ImageIcon, Layers, Sparkles, Plus, X, Check, ArrowLeft,
-  Mail, Zap, Music, MousePointerClick, Clock, CheckCircle2,
-  XCircle, RotateCcw, Trash2, Edit2, ChevronRight, CalendarRange, List, LayoutGrid,
+  Film, Image as ImageIcon, Layers, Sparkles, Plus, X,
+  Check, ArrowLeft, Mail, ChevronLeft, ChevronRight,
+  CheckCircle2, XCircle, RotateCcw, Trash2, Link2,
+  CalendarDays, Clock, Music2, Hash, FileText,
 } from "lucide-react";
-import ScheduleView from "@/components/ScheduleView";
-import CalendarGridView from "@/components/CalendarGridView";
 
-const CONTENT_TYPES = ["Reel", "Post", "Carousel", "Story"];
+/* ─── Types ─────────────────────────────────────────────── */
+interface Brief {
+  id: string;
+  briefNumber: string;
+  contentType: string;
+  ideaTitle: string;
+  ideaDescription: string;
+  visualDescription: string;
+  script: string;
+  music?: string | null;
+  hashtags?: string | null;
+  cta?: string | null;
+  caption?: string | null;
+  driveLink?: string | null;
+  scheduledPostDate?: string | null;
+  postTime?: string | null;
+  phase?: string | null;
+  status: string;
+  clientFeedback?: string | null;
+  approvalDeadline?: string | null;
+  approvedAt?: string | null;
+  currentVersion: number;
+}
 
-const contentTypeConfig: Record<string, { Icon: React.ElementType; color: string; bg: string }> = {
-  Reel:     { Icon: Film,     color: "#6366F1", bg: "rgba(99,102,241,0.12)" },
-  Post:     { Icon: ImageIcon, color: "#06B6D4", bg: "rgba(6,182,212,0.12)" },
-  Carousel: { Icon: Layers,   color: "#8B5CF6", bg: "rgba(139,92,246,0.12)" },
-  Story:    { Icon: Sparkles, color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
-};
+interface CalendarData {
+  id: string;
+  month: string;
+  year: number;
+  status: string;
+  totalReels: number;
+  totalPosts: number;
+  totalCarousels: number;
+  notes?: string | null;
+  sentToClientAt?: string | null;
+  client: { id: string; name: string; email: string };
+  briefs: Brief[];
+}
+
+/* ─── Constants ──────────────────────────────────────────── */
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const CONTENT_TYPES = ["Reel","Post","Carousel","Story"];
+
+const TYPE = {
+  Reel:     { Icon: Film,       color: "#6366F1", bg: "#EEF2FF", border: "#C7D2FE" },
+  Post:     { Icon: ImageIcon,  color: "#0891B2", bg: "#ECFEFF", border: "#A5F3FC" },
+  Carousel: { Icon: Layers,     color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
+  Story:    { Icon: Sparkles,   color: "#D97706", bg: "#FFFBEB", border: "#FDE68A" },
+} as Record<string, { Icon: React.ElementType; color: string; bg: string; border: string }>;
+
+const STATUS = {
+  draft:              { label: "Draft",          bg: "bg-slate-100",   text: "text-slate-600",   dot: "#94A3B8" },
+  sent_to_client:     { label: "Pending Review", bg: "bg-blue-50",     text: "text-blue-600",    dot: "#3B82F6" },
+  approved:           { label: "Approved",       bg: "bg-emerald-50",  text: "text-emerald-700", dot: "#10B981" },
+  rejected:           { label: "Rejected",       bg: "bg-red-50",      text: "text-red-600",     dot: "#EF4444" },
+  revision_requested: { label: "Needs Changes",  bg: "bg-amber-50",    text: "text-amber-700",   dot: "#F59E0B" },
+} as Record<string, { label: string; bg: string; text: string; dot: string }>;
 
 const inputCls = "w-full px-3 py-2.5 border border-[--border] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 bg-white";
 const labelCls = "block text-xs font-semibold text-[--text-secondary] mb-1.5";
 
-function BriefModal({
-  calendarId, brief, onClose, onSave,
-}: {
+/* ─── Add / Edit Brief Modal ─────────────────────────────── */
+function BriefModal({ calendarId, brief, defaultDate, onClose, onSave }: {
   calendarId: string;
-  brief?: ContentBrief | null;
+  brief?: Brief | null;
+  defaultDate?: string;
   onClose: () => void;
   onSave: () => void;
 }) {
   const [form, setForm] = useState({
-    calendarId,
-    briefNumber: brief?.briefNumber || "",
-    contentType: (brief?.contentType as "Reel" | "Post" | "Carousel" | "Story") || "Reel",
+    contentType: brief?.contentType || "Reel",
     ideaTitle: brief?.ideaTitle || "",
     ideaDescription: brief?.ideaDescription || "",
     visualDescription: brief?.visualDescription || "",
     script: brief?.script || "",
-    music: brief?.music || "",
+    caption: brief?.caption || "",
     hashtags: brief?.hashtags || "",
+    music: brief?.music || "",
     cta: brief?.cta || "",
-    moodBoardLinks: brief?.moodBoardLinks || "",
-    specialRequirements: brief?.specialRequirements || "",
-    approvalDeadline: brief?.approvalDeadline?.slice(0, 10) || "",
-    changes: "",
+    driveLink: brief?.driveLink || "",
+    scheduledPostDate: brief?.scheduledPostDate?.slice(0,10) || defaultDate || "",
+    postTime: brief?.postTime || "",
+    phase: brief?.phase || "",
+    briefNumber: brief?.briefNumber || "",
   });
   const [saving, setSaving] = useState(false);
+  const cfg = TYPE[form.contentType] || TYPE.Reel;
+  const Icon = cfg.Icon;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     const url = brief ? `/api/briefs/${brief.id}` : "/api/briefs";
-    const method = brief ? "PUT" : "POST";
     const res = await fetch(url, {
-      method,
+      method: brief ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, calendarId }),
     });
     if (res.ok) { onSave(); onClose(); }
     setSaving(false);
   };
 
-  const cfg = contentTypeConfig[form.contentType] || contentTypeConfig.Reel;
-  const ContentIcon = cfg.Icon;
-
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl my-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl my-4 overflow-hidden">
+        {/* Header */}
+        <div className="h-1" style={{ background: `linear-gradient(90deg, ${cfg.color}, ${cfg.color}88)` }} />
         <div className="flex items-center justify-between px-6 py-4 border-b border-[--border]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: cfg.bg }}>
-              <ContentIcon size={15} style={{ color: cfg.color }} />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+              <Icon size={16} style={{ color: cfg.color }} strokeWidth={1.75} />
             </div>
-            <h2 className="font-bold text-[--text-primary]">{brief ? "Edit Brief" : "New Content Brief"}</h2>
+            <div>
+              <h2 className="font-black text-[--text-primary] text-sm">{brief ? "Edit Content" : "Add New Content"}</h2>
+              <p className="text-[10px] text-[--text-tertiary]">Fill in as much as you have — save and update anytime</p>
+            </div>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[--bg-app] text-[--text-tertiary] transition-colors">
+          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[--bg-app] text-[--text-tertiary] transition-colors">
             <X size={15} />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          <div className="grid grid-cols-3 gap-4">
+
+        <form onSubmit={save} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+          {/* Row 1: type, date, time, phase */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className={labelCls}>Brief # *</label>
-              <input required value={form.briefNumber} onChange={(e) => setForm({ ...form, briefNumber: e.target.value })} className={inputCls} placeholder="1 of 12" />
-            </div>
-            <div>
-              <label className={labelCls}>Content Type *</label>
-              <select value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value as "Reel" | "Post" | "Carousel" | "Story" })} className={inputCls}>
-                {CONTENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              <label className={labelCls}>Type *</label>
+              <select value={form.contentType} onChange={e => setForm({...form, contentType: e.target.value})} className={inputCls}>
+                {CONTENT_TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls}>Approval Deadline</label>
-              <input type="date" value={form.approvalDeadline} onChange={(e) => setForm({ ...form, approvalDeadline: e.target.value })} className={inputCls} />
+              <label className={labelCls}>Post Date</label>
+              <input type="date" value={form.scheduledPostDate} onChange={e => setForm({...form, scheduledPostDate: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Post Time</label>
+              <input value={form.postTime} onChange={e => setForm({...form, postTime: e.target.value})} className={inputCls} placeholder="e.g. 10:30 AM" />
+            </div>
+            <div>
+              <label className={labelCls}>Phase</label>
+              <input value={form.phase} onChange={e => setForm({...form, phase: e.target.value})} className={inputCls} placeholder="Phase 1" />
             </div>
           </div>
+
+          {/* Title */}
           <div>
-            <label className={labelCls}>Idea Title *</label>
-            <input required value={form.ideaTitle} onChange={(e) => setForm({ ...form, ideaTitle: e.target.value })} className={inputCls} placeholder="Short, catchy title for this content" />
+            <label className={labelCls}>Content Title *</label>
+            <input required value={form.ideaTitle} onChange={e => setForm({...form, ideaTitle: e.target.value})} className={inputCls} placeholder="Short, catchy title…" />
           </div>
+
+          {/* Caption */}
           <div>
-            <label className={labelCls}>Idea Description *</label>
-            <textarea required rows={3} value={form.ideaDescription} onChange={(e) => setForm({ ...form, ideaDescription: e.target.value })} className={`${inputCls} resize-none`} placeholder="Full concept and idea explanation…" />
+            <label className={labelCls}>Instagram Caption</label>
+            <textarea rows={3} value={form.caption} onChange={e => setForm({...form, caption: e.target.value})} className={`${inputCls} resize-none`} placeholder="Full caption with emojis, tags, CTA…" />
           </div>
-          <div>
-            <label className={labelCls}>Visual Description *</label>
-            <textarea required rows={3} value={form.visualDescription} onChange={(e) => setForm({ ...form, visualDescription: e.target.value })} className={`${inputCls} resize-none`} placeholder="Colors, styling, mood, visual concept…" />
-          </div>
-          <div>
-            <label className={labelCls}>Script / Talking Points *</label>
-            <textarea required rows={3} value={form.script} onChange={(e) => setForm({ ...form, script: e.target.value })} className={`${inputCls} resize-none`} placeholder="What will be said or shown…" />
-          </div>
+
+          {/* Hashtags + Music */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Music / Audio</label>
-              <input value={form.music} onChange={(e) => setForm({ ...form, music: e.target.value })} className={inputCls} placeholder="Song name or audio style…" />
+              <label className={labelCls}>Hashtags</label>
+              <input value={form.hashtags} onChange={e => setForm({...form, hashtags: e.target.value})} className={inputCls} placeholder="#brand #viral" />
+            </div>
+            <div>
+              <label className={labelCls}>Audio / Music</label>
+              <input value={form.music} onChange={e => setForm({...form, music: e.target.value})} className={inputCls} placeholder="Song name or style…" />
+            </div>
+          </div>
+
+          {/* Script */}
+          <div>
+            <label className={labelCls}>Script / Talking Points</label>
+            <textarea rows={3} value={form.script} onChange={e => setForm({...form, script: e.target.value})} className={`${inputCls} resize-none`} placeholder="What will be said or shown in the video…" />
+          </div>
+
+          {/* Visual + Idea desc */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Visual Description</label>
+              <textarea rows={2} value={form.visualDescription} onChange={e => setForm({...form, visualDescription: e.target.value})} className={`${inputCls} resize-none`} placeholder="Colors, styling, mood…" />
+            </div>
+            <div>
+              <label className={labelCls}>Idea Description</label>
+              <textarea rows={2} value={form.ideaDescription} onChange={e => setForm({...form, ideaDescription: e.target.value})} className={`${inputCls} resize-none`} placeholder="Full concept…" />
+            </div>
+          </div>
+
+          {/* Drive link + CTA */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Google Drive Link</label>
+              <input value={form.driveLink} onChange={e => setForm({...form, driveLink: e.target.value})} className={inputCls} placeholder="https://drive.google.com/…" />
             </div>
             <div>
               <label className={labelCls}>Call to Action</label>
-              <input value={form.cta} onChange={(e) => setForm({ ...form, cta: e.target.value })} className={inputCls} placeholder="Follow, Visit link, DM us…" />
+              <input value={form.cta} onChange={e => setForm({...form, cta: e.target.value})} className={inputCls} placeholder="Follow, Visit link, DM us…" />
             </div>
           </div>
-          <div>
-            <label className={labelCls}>Hashtags</label>
-            <input value={form.hashtags} onChange={(e) => setForm({ ...form, hashtags: e.target.value })} className={inputCls} placeholder="#brand #product #trending" />
-          </div>
-          <div>
-            <label className={labelCls}>Mood Board Links</label>
-            <input value={form.moodBoardLinks} onChange={(e) => setForm({ ...form, moodBoardLinks: e.target.value })} className={inputCls} placeholder="Pinterest, Drive link…" />
-          </div>
-          <div>
-            <label className={labelCls}>Special Requirements</label>
-            <textarea rows={2} value={form.specialRequirements} onChange={(e) => setForm({ ...form, specialRequirements: e.target.value })} className={`${inputCls} resize-none`} placeholder="Props, location, talent needed…" />
-          </div>
-          {brief && (
-            <div>
-              <label className={labelCls}>Changes (for version tracking)</label>
-              <input value={form.changes} onChange={(e) => setForm({ ...form, changes: e.target.value })} className={inputCls} placeholder="What changed in this revision?" />
-            </div>
-          )}
-          <div className="flex gap-3 pt-2">
+
+          <div className="flex gap-3 pt-1">
             <button type="submit" disabled={saving} className="flex-1 py-2.5 text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-opacity" style={{ background: "var(--gradient-brand)" }}>
-              {saving ? "Saving…" : brief ? "Update Brief" : "Create Brief"}
+              {saving ? "Saving…" : brief ? "Save Changes" : "Add Content"}
             </button>
             <button type="button" onClick={onClose} className="px-5 py-2.5 border border-[--border] text-[--text-secondary] text-sm font-semibold rounded-xl hover:bg-[--bg-app] transition-colors">
               Cancel
@@ -157,510 +224,521 @@ function BriefModal({
   );
 }
 
-function FeedbackModal({ brief, onClose, onSave }: { brief: ContentBrief; onClose: () => void; onSave: () => void }) {
-  const [action, setAction] = useState<"revision" | "reject">("revision");
+/* ─── Content Row ────────────────────────────────────────── */
+function ContentRow({ brief, onApprove, onReject, onEdit, onDelete, onDriveSave }: {
+  brief: Brief;
+  onApprove: () => void;
+  onReject: (feedback: string, action: "revision" | "reject") => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onDriveSave: (link: string) => void;
+}) {
+  const cfg = TYPE[brief.contentType] || TYPE.Reel;
+  const Icon = cfg.Icon;
+  const st = STATUS[brief.status] || STATUS.draft;
+  const [expanded, setExpanded] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [fbAction, setFbAction] = useState<"revision"|"reject">("revision");
   const [feedback, setFeedback] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [driveOpen, setDriveOpen] = useState(false);
+  const [draftLink, setDraftLink] = useState(brief.driveLink || "");
 
-  const handleSubmit = async () => {
-    if (!feedback.trim()) return;
-    setSaving(true);
-    await fetch(`/api/briefs/${brief.id}/reject`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feedback, action }),
-    });
-    onSave();
-    onClose();
-    setSaving(false);
-  };
+  const dateObj = brief.scheduledPostDate ? new Date(brief.scheduledPostDate) : null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[--border]">
-          <h2 className="font-bold text-[--text-primary]">Brief Feedback</h2>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[--bg-app] text-[--text-tertiary] transition-colors">
-            <X size={15} />
+    <div className={`rounded-2xl border overflow-hidden transition-all ${brief.status === "approved" ? "border-emerald-200" : brief.status === "rejected" ? "border-red-200" : "border-[--border]"}`}
+      style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+      {/* Status stripe */}
+      <div className="h-0.5" style={{ background: brief.status === "approved" ? "#10B981" : brief.status === "rejected" ? "#EF4444" : brief.status === "revision_requested" ? "#F59E0B" : cfg.color }} />
+
+      {/* Main row */}
+      <div
+        className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50/60 transition-colors"
+        onClick={() => setExpanded(v => !v)}
+      >
+        {/* Type icon */}
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+          <Icon size={15} style={{ color: cfg.color }} strokeWidth={1.75} />
+        </div>
+
+        {/* Date */}
+        <div className="hidden sm:flex flex-col items-center justify-center w-12 shrink-0">
+          {dateObj ? (
+            <>
+              <span className="text-[10px] font-black text-[--text-tertiary] uppercase">{DAYS[dateObj.getDay()]}</span>
+              <span className="text-base font-black text-[--text-primary] leading-none">{dateObj.getDate()}</span>
+            </>
+          ) : <span className="text-[10px] text-[--text-tertiary]">—</span>}
+        </div>
+
+        {/* Content info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-black text-[--text-tertiary]">#{brief.briefNumber || "—"}</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+              {brief.contentType}
+            </span>
+            {brief.phase && <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{brief.phase}</span>}
+            {brief.postTime && <span className="hidden md:flex items-center gap-1 text-[10px] text-[--text-tertiary]"><Clock size={9} /> {brief.postTime}</span>}
+          </div>
+          <p className="font-bold text-[--text-primary] text-sm mt-0.5 truncate">{brief.ideaTitle}</p>
+          {brief.caption && <p className="text-xs text-[--text-tertiary] truncate mt-0.5">{brief.caption}</p>}
+        </div>
+
+        {/* Status + quick actions */}
+        <div className="flex items-center gap-2 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+          <span className={`hidden sm:block text-[10px] font-bold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>
+            {st.label}
+          </span>
+
+          {/* Drive link */}
+          <button
+            onClick={() => setDriveOpen(v => !v)}
+            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${brief.driveLink ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "text-[--text-tertiary] hover:bg-[--bg-app]"}`}
+            title={brief.driveLink ? "View Drive link" : "Add Drive link"}
+          >
+            <Link2 size={13} />
+          </button>
+
+          {/* Approve */}
+          {brief.status !== "approved" && (
+            <button onClick={onApprove} className="w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors" title="Approve">
+              <Check size={13} strokeWidth={2.5} />
+            </button>
+          )}
+
+          {/* Reject/Revision */}
+          {!["approved","rejected"].includes(brief.status) && (
+            <button onClick={() => setFeedbackOpen(true)} className="w-8 h-8 rounded-xl flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Reject / Request changes">
+              <XCircle size={13} />
+            </button>
+          )}
+
+          {/* Edit */}
+          <button onClick={onEdit} className="w-8 h-8 rounded-xl flex items-center justify-center text-[--text-tertiary] hover:bg-[--bg-app] transition-colors" title="Edit">
+            <FileText size={13} />
+          </button>
+
+          {/* Delete */}
+          <button onClick={onDelete} className="w-8 h-8 rounded-xl flex items-center justify-center text-[--text-tertiary] hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+            <Trash2 size={12} />
           </button>
         </div>
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setAction("revision")}
-              className={`flex flex-col items-center gap-2 py-3 rounded-xl border-2 transition-all duration-150 ${
-                action === "revision" ? "border-amber-400 bg-amber-50" : "border-[--border] hover:bg-[--bg-app]"
-              }`}
-            >
-              <RotateCcw size={18} className={action === "revision" ? "text-amber-500" : "text-[--text-tertiary]"} />
-              <span className={`text-xs font-bold ${action === "revision" ? "text-amber-600" : "text-[--text-secondary]"}`}>Request Changes</span>
-            </button>
-            <button
-              onClick={() => setAction("reject")}
-              className={`flex flex-col items-center gap-2 py-3 rounded-xl border-2 transition-all duration-150 ${
-                action === "reject" ? "border-red-400 bg-red-50" : "border-[--border] hover:bg-[--bg-app]"
-              }`}
-            >
-              <XCircle size={18} className={action === "reject" ? "text-red-500" : "text-[--text-tertiary]"} />
-              <span className={`text-xs font-bold ${action === "reject" ? "text-red-600" : "text-[--text-secondary]"}`}>Reject Brief</span>
-            </button>
+      </div>
+
+      {/* Drive link input */}
+      {driveOpen && (
+        <div className="px-4 pb-3 border-t border-[--border] pt-3 flex gap-2 items-center bg-slate-50/60" onClick={e => e.stopPropagation()}>
+          <Link2 size={13} className="text-[--text-tertiary] shrink-0" />
+          <input
+            value={draftLink}
+            onChange={e => setDraftLink(e.target.value)}
+            placeholder="https://drive.google.com/…"
+            className="flex-1 text-sm border border-[--border] rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 bg-white"
+          />
+          {draftLink && (
+            <a href={draftLink} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:underline px-2" onClick={e => e.stopPropagation()}>
+              Open →
+            </a>
+          )}
+          <button onClick={() => { onDriveSave(draftLink); setDriveOpen(false); }} className="px-3 py-2 text-xs font-bold text-white rounded-xl" style={{ background: "var(--gradient-brand)" }}>
+            Save
+          </button>
+        </div>
+      )}
+
+      {/* Feedback row */}
+      {brief.clientFeedback && !feedbackOpen && (
+        <div className="px-4 pb-3 border-t border-amber-100 pt-2 bg-amber-50/50">
+          <p className="text-xs font-bold text-amber-700 mb-0.5">Client Feedback</p>
+          <p className="text-xs text-amber-700">{brief.clientFeedback}</p>
+        </div>
+      )}
+
+      {/* Feedback form */}
+      {feedbackOpen && (
+        <div className="px-4 pb-4 border-t border-[--border] pt-3 space-y-3 bg-slate-50/60" onClick={e => e.stopPropagation()}>
+          <div className="grid grid-cols-2 gap-2">
+            {([["revision","Request Changes","#F59E0B","#FFFBEB"],["reject","Reject","#EF4444","#FEF2F2"]] as const).map(([act, label, color, bg]) => (
+              <button key={act} onClick={() => setFbAction(act)}
+                className={`flex items-center justify-center gap-2 py-2 rounded-xl border-2 text-xs font-bold transition-all`}
+                style={{ borderColor: fbAction === act ? color : "#E5E7EB", background: fbAction === act ? bg : "white", color: fbAction === act ? color : "#6B7280" }}>
+                {act === "revision" ? <RotateCcw size={12} /> : <XCircle size={12} />}
+                {label}
+              </button>
+            ))}
           </div>
-          <div>
-            <label className={labelCls}>Feedback / Reason *</label>
-            <textarea rows={4} value={feedback} onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Explain what needs to change…"
-              className={`${inputCls} resize-none`} />
-          </div>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-2.5 border border-[--border] text-[--text-secondary] text-sm font-semibold rounded-xl hover:bg-[--bg-app] transition-colors">
-              Cancel
-            </button>
-            <button onClick={handleSubmit} disabled={saving || !feedback.trim()}
-              className={`flex-1 py-2.5 text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-all ${
-                action === "reject" ? "bg-red-600 hover:bg-red-700" : "bg-amber-500 hover:bg-amber-600"
-              }`}>
-              {saving ? "Submitting…" : "Submit Feedback"}
+          <textarea rows={2} value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="Explain what needs to change…"
+            className="w-full text-sm border border-[--border] rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none bg-white" />
+          <div className="flex gap-2">
+            <button onClick={() => setFeedbackOpen(false)} className="flex-1 py-2 border border-[--border] text-[--text-secondary] text-xs font-bold rounded-xl hover:bg-[--bg-app] transition-colors">Cancel</button>
+            <button onClick={() => { if (feedback.trim()) { onReject(feedback, fbAction); setFeedbackOpen(false); setFeedback(""); } }}
+              disabled={!feedback.trim()}
+              className="flex-1 py-2 text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-all"
+              style={{ background: fbAction === "reject" ? "#EF4444" : "#F59E0B" }}>
+              Submit
             </button>
           </div>
         </div>
+      )}
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-[--border] pt-3 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/40">
+          {brief.script && (
+            <div>
+              <p className="text-[10px] font-black text-[--text-tertiary] uppercase tracking-widest mb-1.5">Script</p>
+              <p className="text-xs text-[--text-secondary] leading-relaxed whitespace-pre-wrap">{brief.script}</p>
+            </div>
+          )}
+          {brief.ideaDescription && (
+            <div>
+              <p className="text-[10px] font-black text-[--text-tertiary] uppercase tracking-widest mb-1.5">Idea</p>
+              <p className="text-xs text-[--text-secondary] leading-relaxed">{brief.ideaDescription}</p>
+            </div>
+          )}
+          {brief.hashtags && (
+            <div>
+              <p className="text-[10px] font-black text-[--text-tertiary] uppercase tracking-widest mb-1.5 flex items-center gap-1"><Hash size={9} />Hashtags</p>
+              <p className="text-xs text-indigo-500 font-medium">{brief.hashtags}</p>
+            </div>
+          )}
+          {brief.music && (
+            <div>
+              <p className="text-[10px] font-black text-[--text-tertiary] uppercase tracking-widest mb-1.5 flex items-center gap-1"><Music2 size={9} />Audio</p>
+              <p className="text-xs text-[--text-secondary]">{brief.music}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Mini Calendar ──────────────────────────────────────── */
+function MiniCalendar({ briefs, month, year, onDayClick }: {
+  briefs: Brief[];
+  month: string;
+  year: number;
+  onDayClick: (date: string) => void;
+}) {
+  const monthIndex = MONTHS.indexOf(month);
+  const [vm, setVm] = useState(monthIndex >= 0 ? monthIndex : new Date().getMonth());
+  const [vy, setVy] = useState(year);
+
+  const firstDay = new Date(vy, vm, 1).getDay();
+  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
+  const today = new Date();
+
+  const byDay: Record<number, Brief[]> = {};
+  briefs.forEach(b => {
+    if (!b.scheduledPostDate) return;
+    const d = new Date(b.scheduledPostDate);
+    if (d.getFullYear() === vy && d.getMonth() === vm) (byDay[d.getDate()] ??= []).push(b);
+  });
+
+  const prev = () => { if (vm === 0) { setVm(11); setVy(y => y-1); } else setVm(m => m-1); };
+  const next = () => { if (vm === 11) { setVm(0); setVy(y => y+1); } else setVm(m => m+1); };
+
+  const cells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+  return (
+    <div className="bg-white rounded-2xl border border-[--border] overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
+      {/* Nav */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[--border]">
+        <button onClick={prev} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[--bg-app] text-[--text-secondary] transition-colors"><ChevronLeft size={14}/></button>
+        <span className="text-xs font-black text-[--text-primary]">{MONTHS[vm]} {vy}</span>
+        <button onClick={next} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[--bg-app] text-[--text-secondary] transition-colors"><ChevronRight size={14}/></button>
+      </div>
+      {/* Day labels */}
+      <div className="grid grid-cols-7 px-2 pt-2">
+        {DAYS.map(d => <div key={d} className="text-center text-[9px] font-black text-[--text-tertiary] uppercase pb-1">{d[0]}</div>)}
+      </div>
+      {/* Cells */}
+      <div className="grid grid-cols-7 px-2 pb-3 gap-0.5">
+        {Array.from({ length: cells }).map((_, i) => {
+          const day = i - firstDay + 1;
+          const valid = day >= 1 && day <= daysInMonth;
+          const isToday = valid && today.getFullYear() === vy && today.getMonth() === vm && today.getDate() === day;
+          const items = valid ? (byDay[day] || []) : [];
+          const dateStr = valid ? `${vy}-${String(vm+1).padStart(2,"0")}-${String(day).padStart(2,"0")}` : "";
+
+          return (
+            <button
+              key={i}
+              disabled={!valid}
+              onClick={() => valid && onDayClick(dateStr)}
+              className={`relative flex flex-col items-center py-1.5 rounded-lg transition-all text-center ${
+                valid ? "hover:bg-indigo-50 cursor-pointer" : "opacity-0 pointer-events-none"
+              } ${isToday ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
+            >
+              <span className={`text-[11px] font-bold leading-none ${isToday ? "text-white" : valid ? "text-[--text-primary]" : ""}`}>
+                {valid ? day : ""}
+              </span>
+              {items.length > 0 && (
+                <div className="flex gap-0.5 mt-0.5 justify-center flex-wrap">
+                  {items.slice(0,3).map(b => {
+                    const tc = TYPE[b.contentType] || TYPE.Reel;
+                    return <span key={b.id} className="w-1.5 h-1.5 rounded-full" style={{ background: tc.color }} />;
+                  })}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {/* Legend */}
+      <div className="px-4 pb-3 flex flex-wrap gap-2">
+        {Object.entries(TYPE).map(([type, tc]) => (
+          <span key={type} className="flex items-center gap-1 text-[9px] font-bold" style={{ color: tc.color }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: tc.color }} />
+            {type}
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
+/* ─── Main Page ──────────────────────────────────────────── */
 export default function CalendarDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [calendar, setCalendar] = useState<Calendar | null>(null);
+  const [cal, setCal] = useState<CalendarData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showBriefModal, setShowBriefModal] = useState(false);
-  const [editBrief, setEditBrief] = useState<ContentBrief | null>(null);
-  const [feedbackBrief, setFeedbackBrief] = useState<ContentBrief | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editBrief, setEditBrief] = useState<Brief | null>(null);
+  const [defaultDate, setDefaultDate] = useState("");
   const [sending, setSending] = useState(false);
-  const [sendMsg, setSendMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [quickRows, setQuickRows] = useState([{ contentType: "Reel", ideaTitle: "" }]);
-  const [quickSaving, setQuickSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"briefs" | "schedule" | "calendar">("briefs");
+  const [sendMsg, setSendMsg] = useState<{ok: boolean; text: string} | null>(null);
+  const [filterStatus, setFilterStatus] = useState("");
 
-  const fetchCalendar = () => {
+  const fetch_ = useCallback(() => {
     fetch(`/api/calendars/${id}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.success) setCalendar(d.data); })
+      .then(r => r.json())
+      .then(d => { if (d.success) setCal(d.data); })
       .finally(() => setLoading(false));
+  }, [id]);
+
+  useEffect(() => { fetch_(); }, [fetch_]);
+
+  const approve = async (briefId: string) => {
+    await fetch(`/api/briefs/${briefId}/approve`, { method: "PUT" });
+    fetch_();
   };
 
-  useEffect(() => { fetchCalendar(); }, [id]);
-
-  const approveBrief = async (briefId: string) => {
-    await fetch(`/api/briefs/${briefId}/approve`, { method: "PUT" });
-    fetchCalendar();
+  const reject = async (briefId: string, feedback: string, action: "revision"|"reject") => {
+    await fetch(`/api/briefs/${briefId}/reject`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedback, action }),
+    });
+    fetch_();
   };
 
   const deleteBrief = async (briefId: string) => {
-    if (!confirm("Delete this brief?")) return;
+    if (!confirm("Delete this content?")) return;
     await fetch(`/api/briefs/${briefId}`, { method: "DELETE" });
-    fetchCalendar();
+    fetch_();
   };
 
-  const bulkCreateBriefs = async () => {
-    const valid = quickRows.filter(r => r.ideaTitle.trim());
-    if (!valid.length) return;
-    setQuickSaving(true);
-    for (const row of valid) {
-      await fetch("/api/briefs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          calendarId: id,
-          contentType: row.contentType,
-          ideaTitle: row.ideaTitle,
-          ideaDescription: "",
-          visualDescription: "",
-          script: "",
-        }),
-      });
-    }
-    setQuickRows([{ contentType: "Reel", ideaTitle: "" }]);
-    setShowQuickAdd(false);
-    setQuickSaving(false);
-    fetchCalendar();
+  const saveDrive = async (briefId: string, driveLink: string) => {
+    await fetch(`/api/briefs/${briefId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ driveLink }),
+    });
+    fetch_();
   };
 
   const sendToClient = async () => {
-    setSending(true);
-    setSendMsg(null);
+    setSending(true); setSendMsg(null);
     const res = await fetch(`/api/calendars/${id}/send-to-client`, { method: "POST" });
-    const data = await res.json();
-    if (data.success) {
-      setSendMsg({ type: "success", text: "Calendar sent to client by email!" });
-      fetchCalendar();
-    } else {
-      setSendMsg({ type: "error", text: data.error || "Failed to send." });
-    }
+    const d = await res.json();
+    setSendMsg({ ok: d.success, text: d.success ? "Sent to client!" : d.error || "Failed." });
+    if (d.success) fetch_();
     setSending(false);
   };
 
-  if (loading) {
-    return (
-      <div>
-        <Topbar title="Calendar Details" />
-        <div className="p-6 space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-[--border] p-5 h-28 animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!calendar) return (
+  if (loading) return (
     <div>
-      <Topbar title="Calendar Details" />
+      <Topbar title="Content Calendar" />
+      <div className="p-6 space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-20 rounded-2xl bg-white border border-[--border] animate-pulse"/>)}</div>
+    </div>
+  );
+
+  if (!cal) return (
+    <div>
+      <Topbar title="Content Calendar" />
       <div className="p-6 text-center text-[--text-tertiary] mt-20">Calendar not found.</div>
     </div>
   );
 
-  const briefs = (calendar.briefs || []) as ContentBrief[];
-  const approvedCount = briefs.filter((b) => b.status === "approved").length;
-  const pendingCount = briefs.filter((b) => ["draft", "sent_to_client"].includes(b.status)).length;
-  const rejectedCount = briefs.filter((b) => ["rejected", "revision_requested"].includes(b.status)).length;
+  const briefs = cal.briefs || [];
+  const filtered = filterStatus ? briefs.filter(b => b.status === filterStatus) : briefs;
+  const sorted = [...filtered].sort((a, b) => {
+    if (!a.scheduledPostDate && !b.scheduledPostDate) return 0;
+    if (!a.scheduledPostDate) return 1;
+    if (!b.scheduledPostDate) return -1;
+    return new Date(a.scheduledPostDate).getTime() - new Date(b.scheduledPostDate).getTime();
+  });
+
+  const stats = {
+    total: briefs.length,
+    approved: briefs.filter(b => b.status === "approved").length,
+    pending: briefs.filter(b => b.status === "sent_to_client").length,
+    rejected: briefs.filter(b => ["rejected","revision_requested"].includes(b.status)).length,
+    withDrive: briefs.filter(b => b.driveLink).length,
+  };
 
   return (
     <div>
-      <Topbar title={`${calendar.month} ${calendar.year}`} />
-      <div className="p-4 md:p-6 space-y-5">
+      <Topbar title={`${cal.month} ${cal.year}`} />
+      <div className="p-4 md:p-6">
 
-        {/* Calendar Info card */}
-        <div className="bg-white rounded-2xl border border-[--border] overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
-          {/* Top gradient band */}
-          <div className="h-1.5 w-full" style={{ background: "var(--gradient-brand)" }} />
+        {/* ── Header ── */}
+        <div className="bg-white rounded-2xl border border-[--border] overflow-hidden mb-5" style={{ boxShadow: "var(--shadow-card)" }}>
+          <div className="h-1.5" style={{ background: "var(--gradient-brand)" }} />
           <div className="p-5">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-4">
-                {/* Month badge */}
-                <div className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center shrink-0 text-white font-black shadow-lg" style={{ background: "var(--gradient-brand)", boxShadow: "0 4px 14px rgba(99,102,241,0.4)" }}>
-                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">{calendar.month.slice(0, 3)}</span>
-                  <span className="text-xl font-black leading-tight">{calendar.year.toString().slice(-2)}</span>
+                <div className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center text-white font-black shrink-0"
+                  style={{ background: "var(--gradient-brand)", boxShadow: "0 4px 14px rgba(99,102,241,0.35)" }}>
+                  <span className="text-[9px] uppercase tracking-widest opacity-80">{cal.month.slice(0,3)}</span>
+                  <span className="text-xl leading-none">{cal.year.toString().slice(-2)}</span>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2.5 mb-1 flex-wrap">
-                    <h2 className="text-xl font-black text-[--text-primary]">{calendar.month} {calendar.year}</h2>
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${getStatusColor(calendar.status)}`}>
-                      {getStatusLabel(calendar.status)}
-                    </span>
-                  </div>
-                  <p className="text-[--text-secondary] text-sm font-medium">{(calendar.client as { name: string })?.name}</p>
-                  <div className="flex items-center gap-4 mt-2.5 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-xs text-[--text-secondary] font-semibold">
-                      <Film size={12} className="text-indigo-400" /> {calendar.totalReels} Reels
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-[--text-secondary] font-semibold">
-                      <ImageIcon size={12} className="text-cyan-400" /> {calendar.totalPosts} Posts
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-[--text-secondary] font-semibold">
-                      <Layers size={12} className="text-violet-400" /> {calendar.totalCarousels} Carousels
-                    </span>
+                  <h2 className="text-xl font-black text-[--text-primary]">{cal.month} {cal.year}</h2>
+                  <p className="text-sm text-[--text-secondary] font-semibold">{cal.client.name}</p>
+                  <div className="flex gap-4 mt-2 flex-wrap">
+                    {[
+                      { label: "Total", val: stats.total, color: "text-[--text-primary]" },
+                      { label: "Approved", val: stats.approved, color: "text-emerald-600" },
+                      { label: "Pending", val: stats.pending, color: "text-blue-600" },
+                      { label: "Needs Work", val: stats.rejected, color: "text-red-500" },
+                      { label: "With Drive", val: stats.withDrive, color: "text-indigo-600" },
+                    ].map(s => (
+                      <div key={s.label} className="text-center">
+                        <p className={`text-lg font-black ${s.color}`}>{s.val}</p>
+                        <p className="text-[9px] font-bold text-[--text-tertiary] uppercase tracking-wide">{s.label}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Brief stats */}
-              <div className="flex gap-2.5 shrink-0">
-                <div className="text-center px-4 py-3 rounded-xl" style={{ background: "linear-gradient(135deg, #ECFDF5, #D1FAE5)", border: "1px solid #A7F3D0" }}>
-                  <p className="text-2xl font-black text-emerald-600">{approvedCount}</p>
-                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wide">Approved</p>
-                </div>
-                <div className="text-center px-4 py-3 rounded-xl" style={{ background: "linear-gradient(135deg, #FFFBEB, #FEF3C7)", border: "1px solid #FDE68A" }}>
-                  <p className="text-2xl font-black text-amber-600">{pendingCount}</p>
-                  <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wide">Pending</p>
-                </div>
-                <div className="text-center px-4 py-3 rounded-xl" style={{ background: "linear-gradient(135deg, #FEF2F2, #FEE2E2)", border: "1px solid #FECACA" }}>
-                  <p className="text-2xl font-black text-red-500">{rejectedCount}</p>
-                  <p className="text-[10px] text-red-500 font-bold uppercase tracking-wide">Rejected</p>
-                </div>
-              </div>
-            </div>
-
-            {calendar.notes && (
-              <div className="mt-4 px-4 py-3 rounded-xl text-sm text-[--text-secondary] border border-[--border]" style={{ background: "var(--bg-app)" }}>
-                {calendar.notes}
-              </div>
-            )}
-
-            {sendMsg && (
-              <div className={`mt-3 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 ${sendMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
-                {sendMsg.type === "success" ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-                {sendMsg.text}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-[--border] flex-wrap gap-3">
-              <div className="flex items-center gap-3 text-xs text-[--text-tertiary]">
-                <span>Created {formatDate(calendar.createdAt)}</span>
-                {calendar.sentToClientAt && (
-                  <span className="text-emerald-500 font-medium flex items-center gap-1">
-                    <ChevronRight size={11} /> Sent {formatDate(calendar.sentToClientAt)}
-                  </span>
+              <div className="flex flex-col gap-2 items-end">
+                <button onClick={sendToClient} disabled={sending}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-xl disabled:opacity-50 transition-opacity hover:opacity-90"
+                  style={{ background: "var(--gradient-brand)" }}>
+                  <Mail size={14} />
+                  {sending ? "Sending…" : cal.sentToClientAt ? "Resend to Client" : "Send to Client"}
+                </button>
+                {sendMsg && (
+                  <p className={`text-xs font-semibold ${sendMsg.ok ? "text-emerald-600" : "text-red-500"}`}>{sendMsg.text}</p>
+                )}
+                {cal.sentToClientAt && (
+                  <p className="text-xs text-[--text-tertiary]">Last sent {formatDate(cal.sentToClientAt)}</p>
                 )}
               </div>
-              <button onClick={sendToClient} disabled={sending}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-50 transition-opacity hover:opacity-90"
-                style={{ background: "var(--gradient-brand)" }}>
-                <Mail size={14} />
-                {sending ? "Sending…" : calendar.sentToClientAt ? "Resend to Client" : "Send to Client"}
-              </button>
             </div>
           </div>
         </div>
 
-        {/* Briefs section */}
-        <div>
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Title + count */}
-              <div className="flex items-center gap-2.5">
-                <h3 className="font-bold text-[--text-primary] text-base">Content Briefs</h3>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--brand-primary-light)", color: "var(--brand-primary)" }}>
-                  {briefs.length}
-                </span>
-              </div>
-              {/* Tab toggle */}
-              <div className="flex items-center bg-[--bg-app] border border-[--border] rounded-xl p-0.5 gap-0.5">
-                <button
-                  onClick={() => setActiveTab("briefs")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "briefs" ? "bg-white shadow-sm text-[--text-primary]" : "text-[--text-tertiary] hover:text-[--text-secondary]"}`}
-                >
-                  <List size={12} /> Briefs
-                </button>
-                <button
-                  onClick={() => setActiveTab("schedule")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "schedule" ? "bg-white shadow-sm text-[--text-primary]" : "text-[--text-tertiary] hover:text-[--text-secondary]"}`}
-                >
-                  <CalendarRange size={12} /> Schedule
-                </button>
-                <button
-                  onClick={() => setActiveTab("calendar")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "calendar" ? "bg-white shadow-sm text-[--text-primary]" : "text-[--text-tertiary] hover:text-[--text-secondary]"}`}
-                >
-                  <LayoutGrid size={12} /> Calendar
-                </button>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setShowQuickAdd(v => !v)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-xl border transition-all duration-150 ${showQuickAdd ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-[--border] text-[--text-secondary] hover:bg-[--bg-app]"}`}>
-                <Zap size={13} /> Quick Add
-              </button>
-              <button onClick={() => { setEditBrief(null); setShowBriefModal(true); }}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-white rounded-xl hover:opacity-90 transition-opacity"
-                style={{ background: "var(--gradient-brand)" }}>
-                <Plus size={13} /> Full Brief
-              </button>
-            </div>
-          </div>
+        {/* ── Two-column layout ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5">
 
-          {/* Quick Add panel */}
-          {showQuickAdd && (
-            <div className="bg-white rounded-2xl border border-indigo-200 p-4 mb-4" style={{ boxShadow: "0 4px 20px rgba(99,102,241,0.08)" }}>
-              <p className="text-xs font-bold text-[--text-tertiary] uppercase tracking-wider mb-3">Quick Add Multiple Briefs</p>
-              <div className="space-y-2">
-                {quickRows.map((row, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <select
-                      value={row.contentType}
-                      onChange={e => setQuickRows(r => r.map((x, j) => j === i ? { ...x, contentType: e.target.value } : x))}
-                      className="px-3 py-2 border border-[--border] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 w-32 bg-white"
-                    >
-                      {CONTENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <input
-                      value={row.ideaTitle}
-                      onChange={e => setQuickRows(r => r.map((x, j) => j === i ? { ...x, ideaTitle: e.target.value } : x))}
-                      placeholder="Brief title / idea…"
-                      className="flex-1 px-3 py-2 border border-[--border] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 bg-white"
-                    />
-                    {quickRows.length > 1 && (
-                      <button onClick={() => setQuickRows(r => r.filter((_, j) => j !== i))} className="w-7 h-7 rounded-lg flex items-center justify-center text-[--text-tertiary] hover:text-red-500 hover:bg-red-50 transition-colors">
-                        <X size={13} />
-                      </button>
-                    )}
-                  </div>
+          {/* ── Content list ── */}
+          <div className="space-y-4">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-[--text-primary]">Content</h3>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--brand-primary-light)", color: "var(--brand-primary)" }}>
+                  {filtered.length}
+                </span>
+                {/* Status filter */}
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+                  className="text-xs font-bold border border-[--border] rounded-xl px-3 py-1.5 bg-white text-[--text-secondary] focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                  <option value="">All</option>
+                  {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+              <button
+                onClick={() => { setEditBrief(null); setDefaultDate(""); setShowModal(true); }}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white rounded-xl hover:opacity-90 transition-opacity"
+                style={{ background: "var(--gradient-brand)" }}>
+                <Plus size={14} /> Add Content
+              </button>
+            </div>
+
+            {/* List */}
+            {sorted.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-[--border] p-16 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
+                <CalendarDays size={32} className="mx-auto text-[--text-tertiary] mb-3" strokeWidth={1.25} />
+                <p className="font-bold text-[--text-secondary] text-sm">No content yet</p>
+                <p className="text-xs text-[--text-tertiary] mt-1 mb-4">Click a day on the calendar or use Add Content to get started</p>
+                <button onClick={() => setShowModal(true)} className="px-4 py-2 text-sm font-bold text-white rounded-xl" style={{ background: "var(--gradient-brand)" }}>
+                  Add First Content
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {sorted.map(brief => (
+                  <ContentRow
+                    key={brief.id}
+                    brief={brief}
+                    onApprove={() => approve(brief.id)}
+                    onReject={(fb, act) => reject(brief.id, fb, act)}
+                    onEdit={() => { setEditBrief(brief); setShowModal(true); }}
+                    onDelete={() => deleteBrief(brief.id)}
+                    onDriveSave={(link) => saveDrive(brief.id, link)}
+                  />
                 ))}
               </div>
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[--border]">
-                <button onClick={() => setQuickRows(r => [...r, { contentType: "Reel", ideaTitle: "" }])}
-                  className="text-xs text-indigo-600 font-bold hover:text-indigo-800 transition-colors flex items-center gap-1">
-                  <Plus size={11} /> Add row
-                </button>
-                <div className="flex-1" />
-                <button onClick={() => setShowQuickAdd(false)} className="px-3 py-1.5 text-sm border border-[--border] rounded-xl text-[--text-secondary] hover:bg-[--bg-app] transition-colors font-medium">
-                  Cancel
-                </button>
-                <button onClick={bulkCreateBriefs} disabled={quickSaving || quickRows.every(r => !r.ideaTitle.trim())}
-                  className="px-4 py-1.5 text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-opacity hover:opacity-90"
-                  style={{ background: "var(--gradient-brand)" }}>
-                  {quickSaving ? "Creating…" : `Create ${quickRows.filter(r => r.ideaTitle.trim()).length} Brief(s)`}
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Schedule view */}
-          {activeTab === "schedule" && (
-            <ScheduleView briefs={briefs as Parameters<typeof ScheduleView>[0]["briefs"]} onRefresh={fetchCalendar} />
-          )}
-
-          {/* Calendar grid view */}
-          {activeTab === "calendar" && (
-            <CalendarGridView
-              briefs={briefs as Parameters<typeof CalendarGridView>[0]["briefs"]}
-              month={calendar.month}
-              year={calendar.year}
+          {/* ── Right sidebar: mini calendar ── */}
+          <div className="space-y-4">
+            <MiniCalendar
+              briefs={briefs}
+              month={cal.month}
+              year={cal.year}
+              onDayClick={(date) => { setDefaultDate(date); setEditBrief(null); setShowModal(true); }}
             />
-          )}
 
-          {/* Brief cards */}
-          {activeTab === "briefs" && (briefs.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[--border] p-12 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "var(--bg-app)" }}>
-                <Film size={24} className="text-[--text-tertiary]" strokeWidth={1.25} />
-              </div>
-              <p className="font-bold text-[--text-secondary] text-sm">No briefs yet</p>
-              <p className="text-[--text-tertiary] text-xs mt-1 mb-4">Add the first content brief for this calendar</p>
-              <button onClick={() => setShowBriefModal(true)} className="px-4 py-2 text-sm font-bold text-white rounded-xl" style={{ background: "var(--gradient-brand)" }}>
-                Add First Brief
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {briefs.map((brief) => {
-                const cfg = contentTypeConfig[brief.contentType] || contentTypeConfig.Reel;
-                const ContentIcon = cfg.Icon;
-                const isApproved = brief.status === "approved";
-                const isRejected = ["rejected", "revision_requested"].includes(brief.status);
-
+            {/* Quick stats by type */}
+            <div className="bg-white rounded-2xl border border-[--border] p-4" style={{ boxShadow: "var(--shadow-card)" }}>
+              <p className="text-[10px] font-black text-[--text-tertiary] uppercase tracking-widest mb-3">By Type</p>
+              {Object.entries(TYPE).map(([type, tc]) => {
+                const count = briefs.filter(b => b.contentType === type).length;
+                const approved = briefs.filter(b => b.contentType === type && b.status === "approved").length;
                 return (
-                  <div
-                    key={brief.id}
-                    className={`bg-white rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-md ${
-                      isApproved ? "border-emerald-200" : isRejected ? "border-red-200" : "border-[--border]"
-                    }`}
-                    style={{ boxShadow: "var(--shadow-card)" }}
-                  >
-                    {/* Status bar */}
-                    <div className="h-0.5 w-full" style={{
-                      background: isApproved
-                        ? "linear-gradient(90deg, #10B981, #059669)"
-                        : isRejected
-                        ? "linear-gradient(90deg, #EF4444, #DC2626)"
-                        : "var(--gradient-brand)"
-                    }} />
-
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          {/* Content type icon */}
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ background: cfg.bg }}>
-                            <ContentIcon size={17} style={{ color: cfg.color }} strokeWidth={1.75} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="text-xs text-[--text-tertiary] font-bold">#{brief.briefNumber}</span>
-                              <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: cfg.bg, color: cfg.color }}>
-                                {brief.contentType}
-                              </span>
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${getStatusColor(brief.status)}`}>
-                                {getStatusLabel(brief.status)}
-                              </span>
-                              {brief.currentVersion > 1 && (
-                                <span className="text-xs px-2 py-0.5 bg-[--bg-app] text-[--text-tertiary] rounded-full font-semibold">
-                                  v{brief.currentVersion}
-                                </span>
-                              )}
-                            </div>
-                            <p className="font-bold text-[--text-primary] text-sm leading-tight">{brief.ideaTitle}</p>
-                            {brief.ideaDescription && (
-                              <p className="text-xs text-[--text-secondary] mt-1 line-clamp-2">{brief.ideaDescription}</p>
-                            )}
-
-                            {brief.clientFeedback && (
-                              <div className="mt-2.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
-                                <p className="text-xs font-bold text-amber-700 mb-0.5">Client Feedback:</p>
-                                <p className="text-xs text-amber-700">{brief.clientFeedback}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                          {!isApproved && (
-                            <button onClick={() => approveBrief(brief.id)}
-                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors">
-                              <Check size={11} strokeWidth={2.5} /> Approve
-                            </button>
-                          )}
-                          {!isApproved && !isRejected && (
-                            <button onClick={() => setFeedbackBrief(brief)}
-                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-colors">
-                              <X size={11} strokeWidth={2.5} /> Reject
-                            </button>
-                          )}
-                          <button onClick={() => { setEditBrief(brief); setShowBriefModal(true); }}
-                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-[--border] text-[--text-secondary] font-bold hover:bg-[--bg-app] transition-colors">
-                            <Edit2 size={11} /> Edit
-                          </button>
-                          <button onClick={() => deleteBrief(brief.id)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-[--text-tertiary] hover:text-red-500 hover:bg-red-50 transition-colors">
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Brief meta row */}
-                      <div className="mt-3 pt-3 border-t border-[--border] flex flex-wrap gap-3">
-                        {brief.music && (
-                          <span className="flex items-center gap-1.5 text-xs text-[--text-tertiary]">
-                            <Music size={10} /> {brief.music}
-                          </span>
-                        )}
-                        {brief.cta && (
-                          <span className="flex items-center gap-1.5 text-xs text-[--text-tertiary]">
-                            <MousePointerClick size={10} /> {brief.cta}
-                          </span>
-                        )}
-                        {brief.approvalDeadline && (
-                          <span className="flex items-center gap-1.5 text-xs text-[--text-tertiary]">
-                            <Clock size={10} /> Due {formatDate(brief.approvalDeadline)}
-                          </span>
-                        )}
-                        {brief.approvedAt && (
-                          <span className="flex items-center gap-1.5 text-xs text-emerald-500 font-semibold">
-                            <CheckCircle2 size={10} /> Approved {formatDate(brief.approvedAt)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  <div key={type} className="flex items-center gap-2 mb-2 last:mb-0">
+                    <tc.Icon size={12} style={{ color: tc.color }} strokeWidth={2} className="shrink-0" />
+                    <span className="text-xs font-semibold text-[--text-secondary] flex-1">{type}</span>
+                    <span className="text-xs font-bold text-emerald-600">{approved}</span>
+                    <span className="text-xs text-[--text-tertiary]">/{count}</span>
                   </div>
                 );
               })}
             </div>
-          ))}
-        </div>
 
-        {/* Back link */}
-        <div className="pb-2">
-          <Link href="/calendars" className="flex items-center gap-1.5 text-sm text-[--text-secondary] hover:text-indigo-600 font-semibold transition-colors w-fit">
-            <ArrowLeft size={14} /> Back to Calendars
-          </Link>
+            <Link href="/calendars" className="flex items-center gap-1.5 text-sm text-[--text-secondary] hover:text-indigo-600 font-semibold transition-colors">
+              <ArrowLeft size={14} /> All Calendars
+            </Link>
+          </div>
         </div>
       </div>
 
-      {showBriefModal && (
-        <BriefModal calendarId={id} brief={editBrief} onClose={() => setShowBriefModal(false)} onSave={fetchCalendar} />
-      )}
-      {feedbackBrief && (
-        <FeedbackModal brief={feedbackBrief} onClose={() => setFeedbackBrief(null)} onSave={fetchCalendar} />
+      {showModal && (
+        <BriefModal
+          calendarId={id}
+          brief={editBrief}
+          defaultDate={defaultDate}
+          onClose={() => { setShowModal(false); setEditBrief(null); setDefaultDate(""); }}
+          onSave={fetch_}
+        />
       )}
     </div>
   );

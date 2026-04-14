@@ -8,9 +8,10 @@ import type { Calendar, ContentBrief } from "@/types";
 import {
   Film, Image, Layers, Sparkles, Plus, X, Check, ArrowLeft,
   Mail, Zap, Music, MousePointerClick, Clock, CheckCircle2,
-  XCircle, RotateCcw, Trash2, Edit2, ChevronRight, CalendarRange, List,
+  XCircle, RotateCcw, Trash2, Edit2, ChevronRight, CalendarRange, List, LayoutGrid,
 } from "lucide-react";
 import ScheduleView from "@/components/ScheduleView";
+import CalendarGridView from "@/components/CalendarGridView";
 
 const CONTENT_TYPES = ["Reel", "Post", "Carousel", "Story"];
 
@@ -239,7 +240,7 @@ export default function CalendarDetailPage() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickRows, setQuickRows] = useState([{ contentType: "Reel", ideaTitle: "" }]);
   const [quickSaving, setQuickSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"briefs" | "schedule">("briefs");
+  const [activeTab, setActiveTab] = useState<"briefs" | "schedule" | "calendar">("briefs");
 
   const fetchCalendar = () => {
     fetch(`/api/calendars/${id}`)
@@ -437,6 +438,12 @@ export default function CalendarDetailPage() {
                 >
                   <CalendarRange size={12} /> Schedule
                 </button>
+                <button
+                  onClick={() => setActiveTab("calendar")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "calendar" ? "bg-white shadow-sm text-[--text-primary]" : "text-[--text-tertiary] hover:text-[--text-secondary]"}`}
+                >
+                  <LayoutGrid size={12} /> Calendar
+                </button>
               </div>
             </div>
             <div className="flex gap-2">
@@ -501,6 +508,15 @@ export default function CalendarDetailPage() {
           {/* Schedule view */}
           {activeTab === "schedule" && (
             <ScheduleView briefs={briefs as Parameters<typeof ScheduleView>[0]["briefs"]} onRefresh={fetchCalendar} />
+          )}
+
+          {/* Calendar grid view */}
+          {activeTab === "calendar" && (
+            <CalendarGridView
+              briefs={briefs as Parameters<typeof CalendarGridView>[0]["briefs"]}
+              month={calendar.month}
+              year={calendar.year}
+            />
           )}
 
           {/* Brief cards */}

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import { Film, Image, Layers, Sparkles, Check, Clock } from "lucide-react";
+import { Film, Image as ImageIcon, Layers, Sparkles, Check, Clock } from "lucide-react";
 
 interface Brief {
   id: string;
@@ -17,11 +17,40 @@ interface Brief {
 }
 
 const TYPE_CONFIG: Record<string, { Icon: React.ElementType; color: string; bg: string; row: string }> = {
-  Reel:     { Icon: Film,     color: "#6366F1", bg: "rgba(99,102,241,0.12)",  row: "rgba(99,102,241,0.035)" },
-  Post:     { Icon: Image,    color: "#06B6D4", bg: "rgba(6,182,212,0.12)",   row: "rgba(6,182,212,0.035)"  },
-  Carousel: { Icon: Layers,   color: "#8B5CF6", bg: "rgba(139,92,246,0.12)", row: "rgba(139,92,246,0.035)" },
-  Story:    { Icon: Sparkles, color: "#F59E0B", bg: "rgba(245,158,11,0.12)",  row: "rgba(245,158,11,0.035)" },
+  Reel:     { Icon: Film,       color: "#6366F1", bg: "rgba(99,102,241,0.12)",  row: "rgba(99,102,241,0.035)" },
+  Post:     { Icon: ImageIcon,  color: "#06B6D4", bg: "rgba(6,182,212,0.12)",   row: "rgba(6,182,212,0.035)"  },
+  Carousel: { Icon: Layers,     color: "#8B5CF6", bg: "rgba(139,92,246,0.12)", row: "rgba(139,92,246,0.035)" },
+  Story:    { Icon: Sparkles,   color: "#F59E0B", bg: "rgba(245,158,11,0.12)",  row: "rgba(245,158,11,0.035)" },
 };
+
+function TH({ children, className }: { children?: React.ReactNode; className?: string }) {
+  return (
+    <th className={`px-3 py-2.5 text-left text-[10px] font-bold text-[--text-tertiary] uppercase tracking-wider whitespace-nowrap ${className ?? ""}`}>
+      {children}
+    </th>
+  );
+}
+
+function TableHeader() {
+  return (
+    <thead className="sticky top-0 z-10 bg-white" style={{ borderBottom: "2px solid var(--border)" }}>
+      <tr>
+        <TH className="w-8" />
+        <TH>Day</TH>
+        <TH>Date</TH>
+        <TH>Type</TH>
+        <TH>#</TH>
+        <TH>Title / Concept</TH>
+        <TH>Caption Essay</TH>
+        <TH>Hashtags</TH>
+        <TH>Post Time</TH>
+        <TH>Status</TH>
+        <TH>Audio / Notes</TH>
+        <TH>Phase</TH>
+      </tr>
+    </thead>
+  );
+}
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
   draft:               { label: "Draft",      bg: "bg-slate-100",   text: "text-slate-600"   },
@@ -114,12 +143,6 @@ export default function ScheduleView({ briefs, onRefresh }: { briefs: Brief[]; o
     if (existing) existing.rows.push(b);
     else weeks.push({ label, rows: [b] });
   });
-
-  const TH = ({ children, className }: { children?: React.ReactNode; className?: string }) => (
-    <th className={`px-3 py-2.5 text-left text-[10px] font-bold text-[--text-tertiary] uppercase tracking-wider whitespace-nowrap ${className ?? ""}`}>
-      {children}
-    </th>
-  );
 
   const renderRow = (brief: Brief) => {
     const cfg = TYPE_CONFIG[brief.contentType] ?? TYPE_CONFIG.Reel;
@@ -234,25 +257,6 @@ export default function ScheduleView({ briefs, onRefresh }: { briefs: Brief[]; o
       </tr>
     );
   };
-
-  const TableHeader = () => (
-    <thead className="sticky top-0 z-10 bg-white" style={{ borderBottom: "2px solid var(--border)" }}>
-      <tr>
-        <TH className="w-8" />
-        <TH>Day</TH>
-        <TH>Date</TH>
-        <TH>Type</TH>
-        <TH>#</TH>
-        <TH>Title / Concept</TH>
-        <TH>Caption Essay</TH>
-        <TH>Hashtags</TH>
-        <TH>Post Time</TH>
-        <TH>Status</TH>
-        <TH>Audio / Notes</TH>
-        <TH>Phase</TH>
-      </tr>
-    </thead>
-  );
 
   if (briefs.length === 0) {
     return (

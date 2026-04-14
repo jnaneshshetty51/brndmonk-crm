@@ -4,7 +4,7 @@ import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import { getStatusColor, getStatusLabel, formatDate } from "@/lib/utils";
 import type { Calendar, Client } from "@/types";
-import { Plus, X, CalendarDays, Film, Image, Layers, Send, ArrowUpRight } from "lucide-react";
+import { Plus, X, CalendarDays, Film, Image as ImageIcon, Layers, Send, ArrowUpRight } from "lucide-react";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -82,7 +82,7 @@ function CalendarModal({ onClose, onSave }: { onClose: () => void; onSave: () =>
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: "Reels", key: "totalReels", Icon: Film, color: "#6366F1" },
-                { label: "Posts", key: "totalPosts", Icon: Image, color: "#06B6D4" },
+                { label: "Posts", key: "totalPosts", Icon: ImageIcon, color: "#06B6D4" },
                 { label: "Carousels", key: "totalCarousels", Icon: Layers, color: "#8B5CF6" },
               ].map(({ label, key, Icon, color }) => (
                 <div key={key} className="text-center">
@@ -195,7 +195,7 @@ export default function CalendarsPage() {
                           <Film size={11} className="text-indigo-400" /> {cal.totalReels} Reels
                         </span>
                         <span className="flex items-center gap-1.5 text-xs text-[--text-tertiary] font-medium">
-                          <Image size={11} className="text-cyan-400" /> {cal.totalPosts} Posts
+                          <ImageIcon size={11} className="text-cyan-400" /> {cal.totalPosts} Posts
                         </span>
                         <span className="flex items-center gap-1.5 text-xs text-[--text-tertiary] font-medium">
                           <Layers size={11} className="text-violet-400" /> {cal.totalCarousels} Carousels

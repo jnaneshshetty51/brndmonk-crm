@@ -6,7 +6,7 @@ import Topbar from "@/components/Topbar";
 import { getStatusColor, getStatusLabel, formatDate } from "@/lib/utils";
 import type { Calendar, ContentBrief } from "@/types";
 import {
-  Film, Image, Layers, Sparkles, Plus, X, Check, ArrowLeft,
+  Film, Image as ImageIcon, Layers, Sparkles, Plus, X, Check, ArrowLeft,
   Mail, Zap, Music, MousePointerClick, Clock, CheckCircle2,
   XCircle, RotateCcw, Trash2, Edit2, ChevronRight, CalendarRange, List, LayoutGrid,
 } from "lucide-react";
@@ -17,7 +17,7 @@ const CONTENT_TYPES = ["Reel", "Post", "Carousel", "Story"];
 
 const contentTypeConfig: Record<string, { Icon: React.ElementType; color: string; bg: string }> = {
   Reel:     { Icon: Film,     color: "#6366F1", bg: "rgba(99,102,241,0.12)" },
-  Post:     { Icon: Image,    color: "#06B6D4", bg: "rgba(6,182,212,0.12)" },
+  Post:     { Icon: ImageIcon, color: "#06B6D4", bg: "rgba(6,182,212,0.12)" },
   Carousel: { Icon: Layers,   color: "#8B5CF6", bg: "rgba(139,92,246,0.12)" },
   Story:    { Icon: Sparkles, color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
 };
@@ -355,7 +355,7 @@ export default function CalendarDetailPage() {
                       <Film size={12} className="text-indigo-400" /> {calendar.totalReels} Reels
                     </span>
                     <span className="flex items-center gap-1.5 text-xs text-[--text-secondary] font-semibold">
-                      <Image size={12} className="text-cyan-400" /> {calendar.totalPosts} Posts
+                      <ImageIcon size={12} className="text-cyan-400" /> {calendar.totalPosts} Posts
                     </span>
                     <span className="flex items-center gap-1.5 text-xs text-[--text-secondary] font-semibold">
                       <Layers size={12} className="text-violet-400" /> {calendar.totalCarousels} Carousels

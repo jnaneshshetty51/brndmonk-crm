@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Film, Image, Layers, Sparkles, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Film, Image as ImageIcon, Layers, Sparkles, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 
 interface Brief {
   id: string;
@@ -17,7 +17,7 @@ interface Brief {
 
 const TYPE_CONFIG: Record<string, { Icon: React.ElementType; color: string; bg: string; border: string; label: string }> = {
   Reel:     { Icon: Film,     color: "#6366F1", bg: "#EEF2FF", border: "#C7D2FE", label: "Reel"     },
-  Post:     { Icon: Image,    color: "#0891B2", bg: "#ECFEFF", border: "#A5F3FC", label: "Post"     },
+  Post:     { Icon: ImageIcon, color: "#0891B2", bg: "#ECFEFF", border: "#A5F3FC", label: "Post"     },
   Carousel: { Icon: Layers,   color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE", label: "Carousel" },
   Story:    { Icon: Sparkles, color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", label: "Story"    },
 };

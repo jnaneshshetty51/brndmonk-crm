@@ -57,6 +57,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       versions: body.changes ? (versions as unknown as import("@prisma/client").Prisma.InputJsonValue) : (existing.versions as unknown as import("@prisma/client").Prisma.InputJsonValue),
       lastRevisedAt: body.changes ? new Date() : existing.lastRevisedAt,
       approvalDeadline: body.approvalDeadline ? new Date(body.approvalDeadline) : existing.approvalDeadline,
+      scheduledPostDate: body.scheduledPostDate !== undefined
+        ? (body.scheduledPostDate ? new Date(body.scheduledPostDate) : null)
+        : existing.scheduledPostDate,
+      postTime: body.postTime !== undefined ? body.postTime : existing.postTime,
+      phase: body.phase !== undefined ? body.phase : existing.phase,
+      caption: body.caption !== undefined ? body.caption : existing.caption,
     },
   });
 

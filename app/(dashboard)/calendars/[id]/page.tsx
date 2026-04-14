@@ -8,8 +8,9 @@ import type { Calendar, ContentBrief } from "@/types";
 import {
   Film, Image, Layers, Sparkles, Plus, X, Check, ArrowLeft,
   Mail, Zap, Music, MousePointerClick, Clock, CheckCircle2,
-  XCircle, RotateCcw, Trash2, Edit2, ChevronRight,
+  XCircle, RotateCcw, Trash2, Edit2, ChevronRight, CalendarRange, List,
 } from "lucide-react";
+import ScheduleView from "@/components/ScheduleView";
 
 const CONTENT_TYPES = ["Reel", "Post", "Carousel", "Story"];
 
@@ -238,6 +239,7 @@ export default function CalendarDetailPage() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickRows, setQuickRows] = useState([{ contentType: "Reel", ideaTitle: "" }]);
   const [quickSaving, setQuickSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<"briefs" | "schedule">("briefs");
 
   const fetchCalendar = () => {
     fetch(`/api/calendars/${id}`)
@@ -413,11 +415,29 @@ export default function CalendarDetailPage() {
         {/* Briefs section */}
         <div>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <div className="flex items-center gap-2.5">
-              <h3 className="font-bold text-[--text-primary] text-base">Content Briefs</h3>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--brand-primary-light)", color: "var(--brand-primary)" }}>
-                {briefs.length}
-              </span>
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Title + count */}
+              <div className="flex items-center gap-2.5">
+                <h3 className="font-bold text-[--text-primary] text-base">Content Briefs</h3>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--brand-primary-light)", color: "var(--brand-primary)" }}>
+                  {briefs.length}
+                </span>
+              </div>
+              {/* Tab toggle */}
+              <div className="flex items-center bg-[--bg-app] border border-[--border] rounded-xl p-0.5 gap-0.5">
+                <button
+                  onClick={() => setActiveTab("briefs")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "briefs" ? "bg-white shadow-sm text-[--text-primary]" : "text-[--text-tertiary] hover:text-[--text-secondary]"}`}
+                >
+                  <List size={12} /> Briefs
+                </button>
+                <button
+                  onClick={() => setActiveTab("schedule")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "schedule" ? "bg-white shadow-sm text-[--text-primary]" : "text-[--text-tertiary] hover:text-[--text-secondary]"}`}
+                >
+                  <CalendarRange size={12} /> Schedule
+                </button>
+              </div>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowQuickAdd(v => !v)}
@@ -478,8 +498,13 @@ export default function CalendarDetailPage() {
             </div>
           )}
 
+          {/* Schedule view */}
+          {activeTab === "schedule" && (
+            <ScheduleView briefs={briefs as Parameters<typeof ScheduleView>[0]["briefs"]} onRefresh={fetchCalendar} />
+          )}
+
           {/* Brief cards */}
-          {briefs.length === 0 ? (
+          {activeTab === "briefs" && (briefs.length === 0 ? (
             <div className="bg-white rounded-2xl border border-[--border] p-12 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "var(--bg-app)" }}>
                 <Film size={24} className="text-[--text-tertiary]" strokeWidth={1.25} />
@@ -604,7 +629,7 @@ export default function CalendarDetailPage() {
                 );
               })}
             </div>
-          )}
+          ))}
         </div>
 
         {/* Back link */}

@@ -108,6 +108,12 @@ model ContentBrief {
   approvedAt     DateTime?
   lastRevisedAt  DateTime?
 
+  // Posting schedule fields
+  scheduledPostDate DateTime?
+  postTime          String?   // e.g. "10:30 PM"
+  phase             String?   // e.g. "Phase 1"
+  caption           String?   // Full Instagram caption (separate from script)
+
   shoots Shoot[]
   videos Video[]
 

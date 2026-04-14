@@ -94,7 +94,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
             </div>
           ) : (
             <div className="py-2">
-              <Section title="Clients" Icon={Users} items={results.clients} onSelect={(c) => navigate(`/clients`)} renderLabel={(c) => c.name} renderSub={(c) => c.email} />
+              <Section title="Clients" Icon={Users} items={results.clients} onSelect={(c) => navigate(`/clients/${c.id}`)} renderLabel={(c) => c.name} renderSub={(c) => c.email} />
               <Section title="Projects" Icon={FolderKanban} items={results.projects} onSelect={(p) => navigate(`/projects/${p.id}`)} renderLabel={(p) => p.name} renderSub={(p) => p.client.name} />
               <Section title="Shoots" Icon={Camera} items={results.shoots} onSelect={(s) => navigate(`/shoots/${s.id}`)} renderLabel={(s) => s.shootName ?? "Unnamed Shoot"} renderSub={(s) => s.client.name} />
               <Section title="Invoices" Icon={Receipt} items={results.invoices} onSelect={(i) => navigate(`/invoices/${i.id}`)} renderLabel={(i) => i.invoiceNumber} renderSub={(i) => `${i.client.name} — ₹${i.total.toLocaleString()}`} />

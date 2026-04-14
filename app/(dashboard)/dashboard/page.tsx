@@ -230,7 +230,7 @@ export default function DashboardPage() {
 
             <div className="flex items-center gap-3 shrink-0">
               <Link
-                href="/briefs"
+                href="/calendars"
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-150 hover:opacity-90 active:scale-95"
                 style={{
                   background: "rgba(255,255,255,0.12)",
